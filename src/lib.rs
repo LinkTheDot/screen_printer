@@ -2,6 +2,7 @@
 // a concept where you store the rows of the previous print
 // only printing over the rows that were changed
 
+use core::fmt;
 use std::cmp::Ordering;
 use std::fmt::Display;
 
@@ -23,10 +24,11 @@ pub enum PrintingError {
 }
 
 /// The namespace for all methods used to create and print a grid
-// add this when that's implemented, remove before committing
-// ///
-// /// Also used to store data for the dynamic printing method
-pub struct Printer;
+///
+/// Also used to store data for the dynamic printing method
+pub struct Printer {
+  previous_rows: Vec<String>,
+}
 
 /// Error data for when incorrect sizes for the are passed into a method
 #[derive(Debug)]
@@ -47,16 +49,20 @@ impl LengthErrorData {
 }
 
 impl Printer {
-  // change this for when dynamic printing is added remove this comment before committing
   /// Creates a new Printer, this is not needed for most methods since Printer
   /// is only there for the namespace
+  ///
+  // link to the method when it's implemented
+  /// However you will need to create a Printer for using the dynamic_printing() method.
   #[allow(clippy::new_without_default)]
   pub fn new() -> Self {
-    Self {}
+    Self {
+      previous_rows: vec![],
+    }
   }
 
   /// Creates a grid of the given size with the given character.
-  ///
+  //
   /// It's recommended that the passed in item is only 1 character long.
   ///
   /// # Example
@@ -85,7 +91,7 @@ impl Printer {
   /// ```
   /// use terminal_printing::*;
   ///
-  /// let row = "abcd";
+  /// let row = "abcd"
   /// let expected_grid = "abcd\nabcd\nabcd";
   ///
   /// let grid = Printer::create_grid_from_single_row(&row, 3);
@@ -220,10 +226,11 @@ where
   characters
     .chunks(width)
     .map(|row| {
-      row
-        .iter()
-        .map(|character| format!("{}", character))
-        .collect::<String>()
+      row.iter().fold(String::new(), |mut row, character| {
+        row.push_str(format!("{}", character).as_str());
+
+        row
+      })
     })
     .collect::<Vec<String>>()
     .join("\n")
