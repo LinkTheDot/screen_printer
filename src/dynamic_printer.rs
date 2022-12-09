@@ -41,7 +41,7 @@ pub trait DynamicPrinter {
   /// in grids.
   ///
   /// # Example
-  /// ```
+  /// ```rust,no_run
   /// use screen_printer::printer::*;
   ///
   /// let width = 3;
@@ -51,28 +51,26 @@ pub trait DynamicPrinter {
   /// let grid1 = "abc\n123\nxyz".to_string();
   /// let grid2 = "abc\n123\nasd".to_string();
   ///
-  /// // printer.dynamic_print(grid1).unwrap();
   /// // The first print will remember where to print any future grids.
-  /// //
+  /// printer.dynamic_print(grid1).unwrap();
   /// // Should look like
   /// // abc
   /// // 123
   /// // xyz
   ///
-  /// // printer.dynamic_print(grid2).unwrap();
-  /// // The second print will compare the new grid and print only the differences
-  /// // from the previous.
-  /// //
+  /// // The second print will compare the new grid, and
+  /// // print only the differences from the previously printed grid.
+  /// printer.dynamic_print(grid2).unwrap();
   /// // Should look like
   /// // abc
   /// // 123
-  /// // asd
+  /// // asd < only part that got printed
   /// ```
   ///
   /// The way the printer remembers where to print a grid is based on where the cursor was
   /// upon first print.
   /// The cursor's location marks the bottom right of the grid.
-  /// If the x or y of origin are to go out of bounds, said axis be set to 0.
+  /// If the x or y of origin are to go out of bounds, said axis will be set to 0.
   ///
   /// An error is returned when the cursor can't be read or the passed in grid does not match the expected size.
   fn dynamic_print(&mut self, grid: String) -> Result<(), PrintingError>;
