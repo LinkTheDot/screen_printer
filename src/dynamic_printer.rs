@@ -241,7 +241,7 @@ impl DynamicPrinterMethods for Printer {
           .index
           .index_as_coordinates(&self.grid_width);
 
-        x += self.origin_position.0 + 1;
+        x += self.origin_position.0;
         y += self.origin_position.1;
 
         let cursor_movement = format!("\x1B[{};{}H", y, x);
