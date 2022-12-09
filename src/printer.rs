@@ -1,6 +1,7 @@
 pub use crate::dynamic_printer::*;
 use std::cmp::Ordering;
 use std::fmt;
+use std::{io, io::Write};
 
 /// These are the possible ways the program can fail.
 ///
@@ -20,6 +21,12 @@ pub enum PrintingError {
 
   InvalidGridInput(LengthErrorData),
   CursorError(String),
+}
+
+impl fmt::Display for PrintingError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{:?}", self)
+  }
 }
 
 /// The namespace for all methods used to create and print a grid
@@ -208,8 +215,9 @@ impl Printer {
   /// Printer::print_over_previous_grid(grid, height);
   /// ```
   pub fn print_over_previous_grid(grid: String, height: usize) {
-    print!("\x1b[{};A", height);
+    print!("\x1b[{};A", height - 1);
     print!("\r{}", grid);
+    let _ = io::stdout().flush();
   }
 
   /// Creates a row of the given width with the given character.
