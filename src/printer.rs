@@ -58,7 +58,6 @@ impl Printer {
   /// Creates a new Printer, this is not needed for most methods since Printer
   /// is only there for the namespace
   ///
-  ///
   /// However you will need to create a Printer for using the [`dynamic_print()`](crate::printer::Printer::dynamic_print()) method.
   #[allow(clippy::new_without_default)]
   pub fn new(grid_width: usize, grid_height: usize) -> Self {
@@ -76,7 +75,7 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::printer::*;
+  /// use screen_printer::printer::*;
   ///
   /// let character = "a";
   /// let expected_grid = "aaa\naaa\naaa";
@@ -98,7 +97,7 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::printer::*;
+  /// use screen_printer::printer::*;
   ///
   /// let row = "abcd";
   /// let expected_grid = "abcd\nabcd\nabcd";
@@ -125,7 +124,7 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::printer::*;
+  /// use screen_printer::printer::*;
   ///
   /// let characters = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i"];
   /// let expected_grid = "abc\ndef\nghi";
@@ -163,7 +162,7 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::printer::*;
+  /// use screen_printer::printer::*;
   ///
   /// let rows = vec![
   ///   "abc",
@@ -199,7 +198,7 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::printer::*;
+  /// use screen_printer::printer::*;
   ///
   /// let height = 10;
   /// let width = 10;
@@ -217,7 +216,7 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::printer::*;
+  /// use screen_printer::printer::*;
   ///
   /// let width = 3;
   /// let row = Printer::get_row_of_character(&"a", width);
