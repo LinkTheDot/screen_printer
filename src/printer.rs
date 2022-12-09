@@ -1,6 +1,6 @@
 pub use crate::dynamic_printer::*;
 use std::cmp::Ordering;
-use std::fmt::Display;
+use std::fmt;
 
 /// These are the possible ways the program can fail.
 ///
@@ -17,14 +17,23 @@ pub enum PrintingError {
   TooLittleCharacters(LengthErrorData),
 
   RowsDontMatchLengths,
+
+  InvalidGridInput(LengthErrorData),
+  CursorError(String),
 }
 
 /// The namespace for all methods used to create and print a grid
 ///
 /// Also used to store data for the dynamic printing method
+#[derive(Debug)]
 pub struct Printer {
-  previous_rows: Vec<String>,
-  cursor_position: (usize, usize),
+  pub previous_grid: String,
+
+  /// Creation will be on first print
+  pub origin_position: (usize, usize),
+
+  pub grid_height: usize,
+  pub grid_width: usize,
 }
 
 /// Error data for when incorrect sizes for the are passed into a method
@@ -49,23 +58,25 @@ impl Printer {
   /// Creates a new Printer, this is not needed for most methods since Printer
   /// is only there for the namespace
   ///
-  // link to the method when it's implemented
-  /// However you will need to create a Printer for using the dynamic_printing() method.
+  ///
+  /// However you will need to create a Printer for using the [`dynamic_print()`](crate::printer::Printer::dynamic_print()) method.
   #[allow(clippy::new_without_default)]
-  pub fn new() -> Self {
+  pub fn new(grid_width: usize, grid_height: usize) -> Self {
     Self {
-      previous_rows: vec![],
-      cursor_position: (0, 0),
+      previous_grid: String::new(),
+      origin_position: (0, 0),
+      grid_width,
+      grid_height,
     }
   }
 
   /// Creates a grid of the given size with the given character.
-  //
+  ///
   /// It's recommended that the passed in item is only 1 character long.
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::*;
+  /// use terminal_printing::printer::*;
   ///
   /// let character = "a";
   /// let expected_grid = "aaa\naaa\naaa";
@@ -76,7 +87,7 @@ impl Printer {
   /// ```
   pub fn create_grid_from_single_character<T>(character: &T, width: usize, height: usize) -> String
   where
-    T: Display,
+    T: fmt::Display,
   {
     let row = Self::get_row_of_character(character, width);
 
@@ -87,9 +98,9 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::*;
+  /// use terminal_printing::printer::*;
   ///
-  /// let row = "abcd"
+  /// let row = "abcd";
   /// let expected_grid = "abcd\nabcd\nabcd";
   ///
   /// let grid = Printer::create_grid_from_single_row(&row, 3);
@@ -98,7 +109,7 @@ impl Printer {
   /// ```
   pub fn create_grid_from_single_row<T>(row: &T, height: usize) -> String
   where
-    T: Display,
+    T: fmt::Display,
   {
     let row = format!("{}", row);
 
@@ -114,7 +125,7 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::*;
+  /// use terminal_printing::printer::*;
   ///
   /// let characters = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i"];
   /// let expected_grid = "abc\ndef\nghi";
@@ -129,7 +140,7 @@ impl Printer {
     height: usize,
   ) -> Result<String, PrintingError>
   where
-    T: Display,
+    T: fmt::Display,
   {
     let grid_size = width * height;
 
@@ -152,7 +163,7 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::*;
+  /// use terminal_printing::printer::*;
   ///
   /// let rows = vec![
   ///   "abc",
@@ -168,7 +179,7 @@ impl Printer {
   /// ```
   pub fn create_grid_from_multiple_rows<T>(rows: &[T]) -> Result<String, PrintingError>
   where
-    T: Display,
+    T: fmt::Display,
   {
     let rows: Vec<String> = rows.iter().map(|row| format!("{}", row)).collect();
     let width = rows[0].chars().count();
@@ -188,7 +199,7 @@ impl Printer {
   ///
   /// # Example
   /// ```
-  /// use terminal_printing::*;
+  /// use terminal_printing::printer::*;
   ///
   /// let height = 10;
   /// let width = 10;
@@ -203,9 +214,19 @@ impl Printer {
   }
 
   /// Creates a row of the given width with the given character.
-  fn get_row_of_character<T>(character: &T, width: usize) -> String
+  ///
+  /// # Example
+  /// ```
+  /// use terminal_printing::printer::*;
+  ///
+  /// let width = 3;
+  /// let row = Printer::get_row_of_character(&"a", width);
+  ///
+  /// assert_eq!(row, "aaa".to_string());
+  /// ```
+  pub fn get_row_of_character<T>(character: &T, width: usize) -> String
   where
-    T: Display,
+    T: fmt::Display,
   {
     (0..width).fold(String::new(), |row, _| format!("{}{}", row, character))
   }
@@ -216,10 +237,10 @@ impl Printer {
   }
 }
 
-/// Creates a grid of the given width out of the given 2D grid of characters.
+/// Creates a grid of the given width out of the given 1D array of characters.
 fn create_grid_from_characters<T>(characters: &[T], width: usize) -> String
 where
-  T: Display,
+  T: fmt::Display,
 {
   characters
     .chunks(width)
