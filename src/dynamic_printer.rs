@@ -7,15 +7,19 @@ use termion::raw::IntoRawMode;
 
 mod tests;
 
+/// A PixelDifference will contain a single instance of
+/// a contigious string of different pixels within the grid.
+///
+/// The index in which the first different pixel occupies
+/// is also stored.
 #[derive(Debug, PartialEq)]
 struct PixelDifference {
   pixels: String,
   index: usize,
-  // might be able to remove this as true positions are used
-  // instead of relative positions
 }
 
 impl PixelDifference {
+  /// Creates a new pixel difference with the given pixel and index
   fn new(pixel: String, index: usize) -> Self {
     Self {
       pixels: pixel,
@@ -23,6 +27,8 @@ impl PixelDifference {
     }
   }
 
+  /// Checks if the current index is bordering the grid, and adds a newline
+  /// to the PixelDifference if it is.
   fn check_newlines(&mut self, current_index: usize, grid_width: usize, grid_size: usize) {
     if current_index % grid_width == 0 && current_index != grid_size - 1 {
       self.pixels.push('\n');
@@ -31,8 +37,48 @@ impl PixelDifference {
 }
 
 pub trait DynamicPrinter {
+  /// The dynamic_print() method will efficiently print differences of passed
+  /// in grids.
+  ///
+  /// # Example
+  /// ```
+  /// use screen_printer::printer::*;
+  ///
+  /// let width = 3;
+  /// let height = 3;
+  /// let mut printer = Printer::new(width, height);
+  ///
+  /// let grid1 = "abc\n123\nxyz".to_string();
+  /// let grid2 = "abc\n123\nasd".to_string();
+  ///
+  /// // printer.dynamic_print(grid1).unwrap();
+  /// // The first print will remember where to print any future grids.
+  /// //
+  /// // Should look like
+  /// // abc
+  /// // 123
+  /// // xyz
+  ///
+  /// // printer.dynamic_print(grid2).unwrap();
+  /// // The second print will compare the new grid and print only the differences
+  /// // from the previous.
+  /// //
+  /// // Should look like
+  /// // abc
+  /// // 123
+  /// // asd
+  /// ```
+  ///
+  /// The way the printer remembers where to print a grid is based on where the cursor was
+  /// upon first print.
+  /// The cursor's location marks the bottom right of the grid.
+  /// If the x or y of origin are to go out of bounds, said axis be set to 0.
+  ///
+  /// An error is returned when the cursor can't be read or the passed in grid does not match the expected size.
   fn dynamic_print(&mut self, grid: String) -> Result<(), PrintingError>;
-  fn reset(&mut self, new_size: Option<(usize, usize)>);
+
+  /// Resets all data for the printer and assigns it a new size.
+  fn reset(&mut self, new_width: Option<usize>, new_height: Option<usize>);
 }
 
 impl DynamicPrinter for Printer {
@@ -64,30 +110,44 @@ impl DynamicPrinter for Printer {
     Ok(())
   }
 
-  fn reset(&mut self, new_size: Option<(usize, usize)>) {
+  fn reset(&mut self, new_width: Option<usize>, new_height: Option<usize>) {
     self.previous_grid = String::new();
 
-    if let Some((width, height)) = new_size {
+    if let Some(width) = new_width {
       self.grid_width = width;
+    }
+
+    if let Some(height) = new_height {
       self.grid_height = height;
     }
   }
 }
 
 trait DynamicPrinterMethods {
+  /// Returns true if both the previous and new grid have the same
+  /// length per row and amount of rows
   fn grid_size_matches_previous_grid(&self, grid: &str) -> bool;
+
+  /// Gets a list of the pixel indexes that were different from the previous grid
   fn get_grid_diff(&self, grid: &str) -> Vec<PixelDifference>;
 
+  /// Moves the cursor to the assigned origin.
   fn move_to_origin(&self);
+
+  /// Assigns origin with the current cursor position and the size of the grid.
+  ///
+  /// If the cursor is at (10, 10) and the grid is 5x5 then origin will be set to (5, 5).
+  /// If the grid is larger than the cursor's current position, origin will be assigned 0 in it's place.
+  /// This means that if the cursor is at (10, 10), and the grid is 20x5, origin will be assigned to (0, 5).
   fn set_origin(&mut self) -> Result<(), PrintingError>;
+
+  /// Returns the current position of the cursor
   fn get_current_cursor_position() -> Result<(usize, usize), PrintingError>;
 
   fn get_printable_diff(&mut self, pixel_differences: Vec<PixelDifference>) -> String;
 }
 
 impl DynamicPrinterMethods for Printer {
-  /// Returns true if both the previous and new grid have the same
-  /// length per row and amount of rows
   fn grid_size_matches_previous_grid(&self, grid: &str) -> bool {
     let new_grid_height = grid.rsplit('\n').count();
     let old_grid_height = self.previous_grid.rsplit('\n').count();
@@ -101,7 +161,6 @@ impl DynamicPrinterMethods for Printer {
       && new_grid_split.all(|new_row| new_row.chars().count() == old_grid_row_width)
   }
 
-  /// Gets a list of the pixel indexes that were different from the previous grid
   fn get_grid_diff(&self, grid: &str) -> Vec<PixelDifference> {
     let old_grid = self.previous_grid.replace('\n', "");
     let new_grid = grid.replace('\n', "");
@@ -136,9 +195,6 @@ impl DynamicPrinterMethods for Printer {
     )
   }
 
-  /// Moves the cursor to the assigned origin.
-  ///
-  /// Does not flush stdout so the input isn't registered until then.
   fn move_to_origin(&self) {
     print!(
       "\x1B[{};{}H",
@@ -146,11 +202,6 @@ impl DynamicPrinterMethods for Printer {
     );
   }
 
-  /// Assigns origin with the current cursor position and the size of the grid.
-  ///
-  /// If the cursor is at (10, 10) and the grid is 5x5 then origin will be set to (5, 5).
-  /// If the grid is larger than the cursor's current position, origin will be assigned 0 in it's place.
-  /// This means that if the cursor is at (10, 10), and the grid is 20x5, origin will be assigned to (0, 5).
   fn set_origin(&mut self) -> Result<(), PrintingError> {
     let (mut x, mut y) = Self::get_current_cursor_position()?;
 
@@ -172,7 +223,6 @@ impl DynamicPrinterMethods for Printer {
     Ok(())
   }
 
-  /// Returns the current position of the cursor
   fn get_current_cursor_position() -> Result<(usize, usize), PrintingError> {
     let mut stdout = MouseTerminal::from(io::stdout().into_raw_mode().unwrap());
     let cursor_position = stdout.cursor_pos();
@@ -205,6 +255,7 @@ impl DynamicPrinterMethods for Printer {
 }
 
 trait VecMethods<T> {
+  /// Gets a mutable reference to the top most item in a vector
   fn get_mut_top(&mut self) -> Option<&mut T>;
 }
 
@@ -221,6 +272,7 @@ impl<T> VecMethods<T> for std::vec::Vec<T> {
 }
 
 trait UsizeMethods {
+  /// Converts an index into coordinates
   fn index_as_coordinates(&self, grid_width: &Self) -> (usize, usize);
 }
 
