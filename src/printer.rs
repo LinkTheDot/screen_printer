@@ -117,12 +117,13 @@ impl Printer {
   where
     T: fmt::Display,
   {
-    let row = format!("{}", row);
+    let rows = (0..height).fold(Vec::new(), |mut rows, _| {
+      rows.push(&row);
 
-    (0..height)
-      .fold(String::new(), |screen, _| format!("{}\n{}", screen, row))
-      .trim()
-      .to_string()
+      rows
+    });
+
+    Printer::create_grid_from_multiple_rows(&rows).unwrap()
   }
 
   /// Creates a grid of the given size with the given list of characters
