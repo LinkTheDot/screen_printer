@@ -77,6 +77,9 @@ pub trait DynamicPrinter {
 
   /// Resets all data for the printer and assigns it a new size.
   fn reset(&mut self, new_width: Option<usize>, new_height: Option<usize>);
+
+  /// Replaces every character in the grid with whitespace
+  fn clear_grid(&mut self) -> Result<(), PrintingError>;
 }
 
 impl DynamicPrinter for Printer {
@@ -118,6 +121,15 @@ impl DynamicPrinter for Printer {
     if let Some(height) = new_height {
       self.grid_height = height;
     }
+  }
+
+  fn clear_grid(&mut self) -> Result<(), PrintingError> {
+    let empty_grid =
+      Self::create_grid_from_single_character(&" ", self.grid_width, self.grid_height);
+
+    self.dynamic_print(empty_grid)?;
+
+    Ok(())
   }
 }
 

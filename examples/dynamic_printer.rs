@@ -6,7 +6,7 @@ const WIDTH: usize = 10;
 const HEIGHT: usize = 5;
 const WAIT_TIME: u64 = 200;
 
-/// Creates a random list of numbers and prints them.
+/// Creates a random list of numbers, prints them, then clears the grid.
 fn main() {
   println!("{}", "\n".repeat(HEIGHT + 1));
 
@@ -20,6 +20,9 @@ fn main() {
       .dynamic_print(grid)
       .unwrap_or_else(|error| panic!("An error has occurred: '{error}'"));
 
+    thread::sleep(Duration::from_millis(WAIT_TIME));
+
+    printer.clear_grid().unwrap();
     thread::sleep(Duration::from_millis(WAIT_TIME));
   }
 }
