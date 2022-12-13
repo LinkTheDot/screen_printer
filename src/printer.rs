@@ -43,7 +43,7 @@ pub struct Printer {
   pub grid_width: usize,
 }
 
-/// Error data for when incorrect sizes for the are passed into a method
+/// Error data for when incorrect sizes are detected in a method
 #[derive(Debug)]
 pub struct LengthErrorData {
   pub expected_length: usize,
