@@ -57,13 +57,13 @@
 //! }
 //! ```
 //! This will result in
-//! ```
+//! ```bash,no_run
 //! abc
 //! 123
 //! xyz
 //! ```
 //! Into
-//! ```
+//! ```bash,no_run
 //! abc
 //! 789 < only line that was actually printed
 //! xyz
