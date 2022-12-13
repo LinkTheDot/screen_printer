@@ -40,15 +40,33 @@
 //! fn main() {
 //!   let mut printer = Printer::new(WIDTH, HEIGHT);
 //!
+//!   // get the grid data
 //!   let grid_1_rows = vec!["abc", "123", "xyz",];
-//!   let grid_2_rows = vec!["abc", "789", "xyz",];
-//!
+//!   // create the grid
 //!   let grid_1 = Printer::create_grid_from_multiple_rows(&grid_1_rows).unwrap();
-//!   let grid_2 = Printer::create_grid_from_multiple_rows(&grid_1_rows).unwrap();
-//!
+//!   // print the first grid, using said grid as a
+//!   // basis for all future grids
 //!   printer.dynamic_print(grid_1).unwrap();
+//!
+//!   // get the grid data
+//!   let grid_2_rows = vec!["abc", "789", "xyz",];
+//!   // create the grid
+//!   let grid_2 = Printer::create_grid_from_multiple_rows(&grid_1_rows).unwrap();
+//!   // print only the differences in the grid from the previous one
 //!   printer.dynamic_print(grid_2).unwrap();
 //! }
+//! ```
+//! This will result in
+//! ```
+//! abc
+//! 123
+//! xyz
+//! ```
+//! Into
+//! ```
+//! abc
+//! 789 < only line that was actually printed
+//! xyz
 //! ```
 
 /// Methods for efficient grid printing
