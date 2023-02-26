@@ -89,12 +89,15 @@ impl DynamicPrinter for Printer {
 
       let printable_difference = self.get_printable_diff(different_pixels);
 
-      print!("{}", printable_difference);
+      print!("\x1B[10;10H");
+      print!("{printable_difference:?}");
+
+      print!("{printable_difference}");
     } else if self.previous_grid.is_empty() {
       self.set_origin()?;
       self.move_to_origin();
 
-      print!("{}", grid);
+      print!("{grid}");
     } else {
       let previous_grid_size = self.previous_grid.chars().count();
       let new_grid_size = grid.chars().count();
@@ -251,10 +254,10 @@ impl DynamicPrinterMethods for Printer {
           .index
           .index_as_coordinates(&self.grid_width);
 
-        x += self.origin_position.0;
+        x += self.origin_position.0 + 1;
         y += self.origin_position.1;
 
-        let cursor_movement = format!("\x1B[{};{}H", y, x);
+        let cursor_movement = format!("\x1B[{y};{x}H");
         let movement_with_pixels = format!("{}{}", cursor_movement, pixel_difference.pixels);
 
         printable_diff.push_str(&movement_with_pixels);
