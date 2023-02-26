@@ -89,9 +89,6 @@ impl DynamicPrinter for Printer {
 
       let printable_difference = self.get_printable_diff(different_pixels);
 
-      print!("\x1B[10;10H");
-      print!("{printable_difference:?}");
-
       print!("{printable_difference}");
     } else if self.previous_grid.is_empty() {
       self.set_origin()?;

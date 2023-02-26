@@ -25,7 +25,7 @@ pub enum PrintingError {
 
 impl fmt::Display for PrintingError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{:?}", self)
+    write!(f, "{self:?}")
   }
 }
 
@@ -188,7 +188,7 @@ impl Printer {
   where
     T: fmt::Display,
   {
-    let rows: Vec<String> = rows.iter().map(|row| format!("{}", row)).collect();
+    let rows: Vec<String> = rows.iter().map(|row| format!("{row}")).collect();
     let width = rows[0].chars().count();
 
     if Self::rows_have_same_lengths(&rows, width) {
@@ -217,7 +217,7 @@ impl Printer {
   /// ```
   pub fn print_over_previous_grid(grid: String, height: usize) {
     print!("\x1b[{};A", height - 1);
-    print!("\r{}", grid);
+    print!("\r{grid}");
     let _ = io::stdout().flush();
   }
 
@@ -236,7 +236,7 @@ impl Printer {
   where
     T: fmt::Display,
   {
-    (0..width).fold(String::new(), |row, _| format!("{}{}", row, character))
+    (0..width).fold(String::new(), |row, _| format!("{row}{character}"))
   }
 
   /// Returns true of all given rows have the same amount of characters as the expected input.
@@ -254,7 +254,7 @@ where
     .chunks(width)
     .map(|row| {
       row.iter().fold(String::new(), |mut row, character| {
-        row.push_str(format!("{}", character).as_str());
+        row.push_str(format!("{character}").as_str());
 
         row
       })
