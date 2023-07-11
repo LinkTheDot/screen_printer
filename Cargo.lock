@@ -130,7 +130,7 @@ dependencies = [
 
 [[package]]
 name = "screen_printer"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "colored",
  "lazy_static",
