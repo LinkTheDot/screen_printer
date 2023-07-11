@@ -239,6 +239,11 @@ impl Printer {
     (0..width).fold(String::new(), |row, _| format!("{row}{character}"))
   }
 
+  /// Returns the (width, height) of the printer.
+  pub fn current_dimensions(&self) -> (usize, usize) {
+    (self.grid_width, self.grid_height)
+  }
+
   /// Returns true of all given rows have the same amount of characters as the expected input.
   fn rows_have_same_lengths(rows: &[String], expected_width: usize) -> bool {
     rows.iter().all(|row| row.chars().count() == expected_width)

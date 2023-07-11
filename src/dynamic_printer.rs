@@ -1,5 +1,4 @@
 use crate::printer::*;
-use guard::guard;
 use std::{io, io::Write};
 use termion::cursor::DetectCursorPos;
 use termion::input::MouseTerminal;
@@ -80,6 +79,9 @@ pub trait DynamicPrinter {
 
   /// Replaces every character in the grid with whitespace
   fn clear_grid(&mut self) -> Result<(), PrintingError>;
+
+  /// Returns true if the passed in grid is the expected size for [`dynamic_print`](Printer::dynamic_print).
+  fn grid_size_is_valid(&self, grid: &str) -> bool;
 }
 
 impl DynamicPrinter for Printer {
@@ -112,7 +114,7 @@ impl DynamicPrinter for Printer {
   }
 
   fn reset(&mut self, new_width: Option<usize>, new_height: Option<usize>) {
-    self.previous_grid = String::new();
+    self.previous_grid.clear();
 
     if let Some(width) = new_width {
       self.grid_width = width;
@@ -130,6 +132,11 @@ impl DynamicPrinter for Printer {
     self.dynamic_print(empty_grid)?;
 
     Ok(())
+  }
+
+  /// Returns true if the passed in grid is the expected size for [`dynamic_print`](Printer::dynamic_print).
+  fn grid_size_is_valid(&self, grid: &str) -> bool {
+    self.grid_size_matches_previous_grid(grid)
   }
 }
 
@@ -154,7 +161,7 @@ trait DynamicPrinterMethods {
   /// Returns the current position of the cursor
   fn get_current_cursor_position() -> Result<(usize, usize), PrintingError>;
 
-  fn get_printable_diff(&mut self, pixel_differences: Vec<PixelDifference>) -> String;
+  fn get_printable_diff(&self, pixel_differences: Vec<PixelDifference>) -> String;
 }
 
 impl DynamicPrinterMethods for Printer {
@@ -164,7 +171,7 @@ impl DynamicPrinterMethods for Printer {
 
     let mut new_grid_split = grid.rsplit('\n');
 
-    guard!(let Some(old_grid_row) = self.previous_grid.rsplit('\n').next() else { return false; });
+    let Some(old_grid_row) = self.previous_grid.rsplit('\n').next() else { return false; };
     let old_grid_row_width = old_grid_row.chars().count();
 
     new_grid_height == old_grid_height
@@ -183,22 +190,25 @@ impl DynamicPrinterMethods for Printer {
     grid_iter.enumerate().fold(
       Vec::new(),
       |mut different_pixels, (pixel_index, (old_pixel, new_pixel))| {
-        if new_pixel != old_pixel {
-          if let Some(latest_pixel) = different_pixels.get_mut_top() {
-            if last_edited_pixel_index == pixel_index - 1 || latest_pixel.index == pixel_index - 1 {
-              latest_pixel.check_newlines(pixel_index, self.grid_width, grid_size);
-
-              latest_pixel.pixels.push_str(&new_pixel.to_string());
-
-              last_edited_pixel_index = pixel_index;
-              return different_pixels;
-            }
-          }
-
-          let pixel_difference = PixelDifference::new(new_pixel.to_string(), pixel_index);
-
-          different_pixels.push(pixel_difference);
+        if new_pixel == old_pixel {
+          return different_pixels;
         }
+
+        if let Some(latest_pixel) = different_pixels.get_mut_top() {
+          if last_edited_pixel_index == pixel_index - 1 || latest_pixel.index == pixel_index - 1 {
+            latest_pixel.check_newlines(pixel_index, self.grid_width, grid_size);
+
+            latest_pixel.pixels.push_str(&new_pixel.to_string());
+
+            last_edited_pixel_index = pixel_index;
+
+            return different_pixels;
+          }
+        }
+
+        let pixel_difference = PixelDifference::new(new_pixel.to_string(), pixel_index);
+
+        different_pixels.push(pixel_difference);
 
         different_pixels
       },
@@ -243,7 +253,7 @@ impl DynamicPrinterMethods for Printer {
     }
   }
 
-  fn get_printable_diff(&mut self, pixel_differences: Vec<PixelDifference>) -> String {
+  fn get_printable_diff(&self, pixel_differences: Vec<PixelDifference>) -> String {
     pixel_differences
       .iter()
       .fold(String::new(), |mut printable_diff, pixel_difference| {
