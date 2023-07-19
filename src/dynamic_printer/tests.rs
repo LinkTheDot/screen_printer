@@ -6,15 +6,25 @@ use super::*;
 mod grid_size_matches_previous_grid_logic {
   use super::*;
 
+  #[test]
+  fn grid_size_is_valid_grid_exists() {
+    let printer = Printer::new();
+  }
+
+  #[test]
+  fn grid_size_is_valid_grid_doesnt_exist() {}
+
+  #[test]
+  fn grid_size_is_valid_false() {}
+
   // Can't use dynamic_print in tests because getting origin isn't possible.
   // Printing escape codes in a test also makes the terminal explode.
   #[test]
   fn does_match() {
-    let mut printer = Printer::new(3, 3);
-    let grid1 =
-      Printer::create_grid_from_single_character(&"a", printer.grid_width, printer.grid_height);
-    let grid2 =
-      Printer::create_grid_from_single_character(&"b", printer.grid_width, printer.grid_height);
+    let (width, height) = (5, 5);
+    let mut printer = Printer::new();
+    let grid1 = Printer::create_grid_from_single_character('a', width, height);
+    let grid2 = Printer::create_grid_from_single_character('b', width, height);
 
     printer.previous_grid = grid1;
 
@@ -23,11 +33,10 @@ mod grid_size_matches_previous_grid_logic {
 
   #[test]
   fn does_not_match() {
-    let mut printer = Printer::new(3, 3);
-    let grid1 =
-      Printer::create_grid_from_single_character(&"a", printer.grid_width, printer.grid_height);
-    let grid2 =
-      Printer::create_grid_from_single_character(&"b", printer.grid_width + 2, printer.grid_height);
+    let (width, height) = (5, 5);
+    let mut printer = Printer::new();
+    let grid1 = Printer::create_grid_from_single_character('a', width, height);
+    let grid2 = Printer::create_grid_from_single_character('b', width + 2, height);
 
     printer.previous_grid = grid1;
 
@@ -38,22 +47,11 @@ mod grid_size_matches_previous_grid_logic {
 #[cfg(test)]
 mod get_grid_diff_logic {
   use super::*;
-  // Base grid will be
-  // abcde
-  // 12345
-  // vwxyz
-  static BASE_GRID: &str = "abcde\n12345\nvwxyz";
-  static GRID_SIZES: (usize, usize) = (5, 3);
 
-  fn get_preassigned_printer() -> Printer {
-    let mut printer = Printer::new(GRID_SIZES.0, GRID_SIZES.1);
-    printer.previous_grid = BASE_GRID.to_string();
-
-    printer
-  }
-
-  /// The indices will apply to any newlines, so make
-  /// sure to account for those.
+  /// Gets the [`BASE_GRID`](BASE_GRID), and changes the characters as the passed in list of indices.
+  /// The characters will be replaced with l.
+  ///
+  /// The indices will apply to any newlines, so make sure to account for those.
   fn get_modified_base_grid(indices: Vec<usize>) -> String {
     indices
       .into_iter()
@@ -78,7 +76,8 @@ mod get_grid_diff_logic {
       index: 0,
     }];
 
-    let different_pixels = printer.get_grid_diff(&different_grid);
+    let different_pixels =
+      Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
     assert_eq!(expected_different_pixels, different_pixels);
   }
@@ -100,7 +99,8 @@ mod get_grid_diff_logic {
         index: 0,
       }];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -118,7 +118,8 @@ mod get_grid_diff_logic {
         index: 4,
       }];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -136,7 +137,8 @@ mod get_grid_diff_logic {
         index: 3,
       }];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -154,7 +156,8 @@ mod get_grid_diff_logic {
         index: 6,
       }];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -178,7 +181,8 @@ mod get_grid_diff_logic {
         },
       ];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -196,7 +200,8 @@ mod get_grid_diff_logic {
         index: 13,
       }];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -219,7 +224,8 @@ mod get_grid_diff_logic {
         index: 0,
       }];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -243,7 +249,8 @@ mod get_grid_diff_logic {
         },
       ];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -267,7 +274,8 @@ mod get_grid_diff_logic {
         },
       ];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -291,7 +299,8 @@ mod get_grid_diff_logic {
         },
       ];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -314,7 +323,8 @@ mod get_grid_diff_logic {
         index: 0,
       }];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -338,7 +348,8 @@ mod get_grid_diff_logic {
         },
       ];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -370,7 +381,8 @@ mod get_grid_diff_logic {
         },
       ];
 
-      let different_pixels = printer.get_grid_diff(&different_grid);
+      let different_pixels =
+        Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
       assert_eq!(expected_different_pixels, different_pixels);
     }
@@ -390,8 +402,138 @@ mod get_grid_diff_logic {
       index: 0,
     }];
 
-    let different_pixels = printer.get_grid_diff(&different_grid);
+    let different_pixels =
+      Printer::get_pixel_difference(&printer.previous_grid, &different_grid, 5);
 
     assert_eq!(expected_different_pixels, different_pixels);
   }
+}
+
+#[cfg(test)]
+mod get_origin_from_options_tests {
+  use super::*;
+
+  #[test]
+  fn x_left_option() {
+    let mut printer = get_preassigned_printer();
+    let grid_dimensions = GRID_SIZES;
+    let printing_options = PrintingOptions {
+      x_printing_option: XPrintingOption::Left,
+      ..Default::default()
+    };
+
+    let expected_x_position = 1;
+
+    printer.printing_options = Some(printing_options);
+
+    let (origin_x, _) = printer.get_origin_from_options(grid_dimensions).unwrap();
+
+    assert_eq!(origin_x, expected_x_position);
+  }
+
+  #[test]
+  fn x_middle_option() {
+    let terminal_width = termion::terminal_size().unwrap().0 as usize;
+    let mut printer = get_preassigned_printer();
+    let grid_dimensions = GRID_SIZES;
+    let printing_options = PrintingOptions {
+      x_printing_option: XPrintingOption::Middle,
+      ..Default::default()
+    };
+
+    let expected_x_position = ((terminal_width as f32 / 2.0).floor()
+      - (grid_dimensions.0 as f32 / 2.0).floor())
+    .floor() as usize;
+
+    printer.printing_options = Some(printing_options);
+
+    let (origin_x, _) = printer.get_origin_from_options(grid_dimensions).unwrap();
+
+    assert_eq!(origin_x, expected_x_position);
+  }
+
+  #[test]
+  fn x_right_option() {
+    let terminal_width = termion::terminal_size().unwrap().0 as usize;
+    let mut printer = get_preassigned_printer();
+    let grid_dimensions = GRID_SIZES;
+    let printing_options = PrintingOptions {
+      x_printing_option: XPrintingOption::Right,
+      ..Default::default()
+    };
+
+    let expected_x_position = (terminal_width - grid_dimensions.0) + 1;
+
+    printer.printing_options = Some(printing_options);
+
+    let (origin_x, _) = printer.get_origin_from_options(grid_dimensions).unwrap();
+
+    assert_eq!(origin_x, expected_x_position);
+  }
+
+  #[test]
+  fn y_top_option() {
+    let mut printer = get_preassigned_printer();
+    let grid_dimensions = GRID_SIZES;
+    let printing_options = PrintingOptions {
+      y_printing_option: YPrintingOption::Top,
+      ..Default::default()
+    };
+    printer.printing_options = Some(printing_options);
+    let expected_y_position = 1;
+
+    let (_, origin_y) = printer.get_origin_from_options(grid_dimensions).unwrap();
+
+    assert_eq!(origin_y, expected_y_position);
+  }
+
+  #[test]
+  fn y_middle_option() {
+    let terminal_height = termion::terminal_size().unwrap().1 as usize;
+    let mut printer = get_preassigned_printer();
+    let grid_dimensions = GRID_SIZES;
+    let printing_options = PrintingOptions {
+      y_printing_option: YPrintingOption::Middle,
+      ..Default::default()
+    };
+    printer.printing_options = Some(printing_options);
+    let expected_y_position = ((terminal_height as f32 / 2.0).floor()
+      - (grid_dimensions.1 as f32 / 2.0).floor())
+    .floor() as usize;
+
+    let (_, origin_y) = printer.get_origin_from_options(grid_dimensions).unwrap();
+
+    assert_eq!(origin_y, expected_y_position);
+  }
+
+  #[test]
+  fn y_bottom_option() {
+    let terminal_height = termion::terminal_size().unwrap().1 as usize;
+    let mut printer = get_preassigned_printer();
+    let grid_dimensions = GRID_SIZES;
+    let printing_options = PrintingOptions {
+      y_printing_option: YPrintingOption::Bottom,
+      ..Default::default()
+    };
+    printer.printing_options = Some(printing_options);
+    let expected_y_position = (terminal_height - grid_dimensions.1) + 1;
+
+    let (_, origin_y) = printer.get_origin_from_options(grid_dimensions).unwrap();
+
+    assert_eq!(origin_y, expected_y_position);
+  }
+}
+
+// Base grid will be
+// abcde
+// 12345
+// vwxyz
+static BASE_GRID: &str = "abcde\n12345\nvwxyz";
+static GRID_SIZES: (usize, usize) = (5, 3);
+
+fn get_preassigned_printer() -> Printer {
+  let mut printer = Printer::new();
+  printer.previous_grid = BASE_GRID.to_string();
+
+  printer
 }

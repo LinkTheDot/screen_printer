@@ -10,15 +10,18 @@ const WAIT_TIME: u64 = 400;
 fn main() {
   println!("{}", "\n".repeat(HEIGHT + 1));
 
-  let mut printer = Printer::new(WIDTH, HEIGHT);
+  let mut printer = Printer::with_printing_options(PrintingOptions::default());
+  let mut rng = rand::thread_rng();
+  let mut list_of_numbers: Vec<u8> = [0; WIDTH * HEIGHT].into(); //Vec::with_capacity(WIDTH * HEIGHT);
 
   for _ in 0..25 {
     for _ in 0..4 {
-      // Get the grid data
-      let number_array = get_random_number_array(WIDTH * HEIGHT);
-      // Create the grid with the data
+      // Update the grid data
+      update_random_number_array(&mut rng, &mut list_of_numbers);
+
+      // Create a grid with the data
       let grid =
-        Printer::create_grid_from_full_character_list(&number_array, WIDTH, HEIGHT).unwrap();
+        Printer::create_grid_from_full_character_list(&list_of_numbers, WIDTH, HEIGHT).unwrap();
 
       // Print the grid
       printer
@@ -27,20 +30,12 @@ fn main() {
 
       thread::sleep(Duration::from_millis(WAIT_TIME));
     }
-
-    // Clear the grid every 4 prints for a flashing effect
-    printer.clear_grid().unwrap();
-    thread::sleep(Duration::from_millis(WAIT_TIME / 2));
   }
 }
 
 /// Retuns a list of random numbers 0-9
-fn get_random_number_array(total_size: usize) -> Vec<u16> {
-  let mut rng = rand::thread_rng();
-
-  (0..total_size).fold(Vec::new(), |mut number_array, _| {
-    number_array.push(rng.gen_range(0..9));
-
-    number_array
-  })
+fn update_random_number_array(rng: &mut ThreadRng, number_array: &mut [u8]) {
+  for num in number_array.iter_mut() {
+    *num = rng.gen_range(0..9);
+  }
 }

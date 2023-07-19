@@ -9,18 +9,19 @@ use std::{io, io::Write};
 /// expected and outcome results in the event of the error.
 #[derive(Debug)]
 pub enum PrintingError {
-  RowTooLong(LengthErrorData),
-  RowTooShort(LengthErrorData),
-
   /// In the context of creating a grid from a full list of characters
   TooManyCharacters(LengthErrorData),
   /// In the context of creating a grid from a full list of characters
   TooLittleCharacters(LengthErrorData),
 
-  RowsDontMatchLengths,
-
-  InvalidGridInput(LengthErrorData),
+  NonRectangularGrid,
   CursorError(String),
+  GridLargerThanTerminal,
+  GridDimensionsNotDefined,
+  CursorPositionNotDefined,
+  CouldntGetTerminalDimensions,
+  GridIsLargerThanTerminal,
+  MissingPrintingOptions,
 }
 
 impl fmt::Display for PrintingError {
@@ -32,15 +33,16 @@ impl fmt::Display for PrintingError {
 /// The namespace for all methods used to create and print a grid
 ///
 /// Also used to store data for the dynamic printing method
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Printer {
-  pub previous_grid: String,
+  pub(crate) previous_grid: String,
 
-  /// Creation will be on first print
-  pub origin_position: (usize, usize),
+  pub(crate) origin_position: Option<(usize, usize)>,
 
-  pub grid_height: usize,
-  pub grid_width: usize,
+  pub(crate) grid_height: Option<usize>,
+  pub(crate) grid_width: Option<usize>,
+
+  pub printing_options: Option<PrintingOptions>,
 }
 
 /// Error data for when incorrect sizes are detected in a method
@@ -52,7 +54,6 @@ pub struct LengthErrorData {
 
 impl LengthErrorData {
   /// Creates a new LengthErrorData for the expected length and actual length
-  #[allow(clippy::new_without_default)]
   pub fn new(expected_length: usize, got_length: usize) -> Self {
     Self {
       expected_length,
@@ -61,69 +62,79 @@ impl LengthErrorData {
   }
 }
 
-impl Printer {
-  /// Creates a new Printer, this is not needed for most methods since Printer
-  /// is only there for the namespace
-  ///
-  /// However you will need to create a Printer for using the [`dynamic_print()`](crate::printer::Printer::dynamic_print()) method.
-  #[allow(clippy::new_without_default)]
-  pub fn new(grid_width: usize, grid_height: usize) -> Self {
+#[derive(Debug, Default, Clone)]
+pub struct PrintingOptions {
+  pub x_printing_option: XPrintingOption,
+  pub y_printing_option: YPrintingOption,
+}
+
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
+pub enum XPrintingOption {
+  #[default]
+  Left,
+  Middle,
+  Right,
+}
+
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
+pub enum YPrintingOption {
+  Top,
+  Middle,
+  #[default]
+  Bottom,
+}
+
+impl PrintingOptions {
+  pub fn new(x_printing_option: XPrintingOption, y_printing_option: YPrintingOption) -> Self {
     Self {
-      previous_grid: String::new(),
-      origin_position: (0, 0),
-      grid_width,
-      grid_height,
+      x_printing_option,
+      y_printing_option,
+    }
+  }
+}
+
+impl Printer {
+  /// Creates a new printer for the [`dynamic_print()`](Printer::dynamic_print) method.
+  #[allow(clippy::new_without_default)]
+  pub fn new() -> Self {
+    Self::new_printer(None)
+  }
+
+  /// Creates a new printer for the [`dynamic_print()`](Printer::dynamic_print) method with the given printing options.
+  ///
+  /// PrintingOptions tell the printer where to print any grids passed into it.
+  /// Refer to [`PrintingOptions`](PrintingOptions) for more information;
+  pub fn with_printing_options(printing_options: PrintingOptions) -> Self {
+    Self::new_printer(Some(printing_options))
+  }
+
+  fn new_printer(printing_options: Option<PrintingOptions>) -> Self {
+    Self {
+      printing_options,
+      ..Default::default()
     }
   }
 
   /// Creates a grid of the given size with the given character.
   ///
-  /// It's recommended that the passed in item is only 1 character long.
-  ///
   /// # Example
   /// ```
   /// use screen_printer::printer::*;
   ///
-  /// let character = "a";
+  /// let character = 'a';
   /// let expected_grid = "aaa\naaa\naaa";
   ///
-  /// let grid = Printer::create_grid_from_single_character(&character, 3, 3);
+  /// let grid = Printer::create_grid_from_single_character(character, 3, 3);
   ///
   /// assert_eq!(expected_grid, grid);
   /// ```
-  pub fn create_grid_from_single_character<T>(character: &T, width: usize, height: usize) -> String
-  where
-    T: fmt::Display,
-  {
-    let row = Self::get_row_of_character(character, width);
+  pub fn create_grid_from_single_character(character: char, width: usize, height: usize) -> String {
+    // This was the fastest way I found to create a large 2-dimensional string of 1 character.
+    let pixel_row = character.to_string().repeat(width) + "\n";
+    let mut frame = pixel_row.repeat(height);
+    frame.pop(); // remove new line
 
-    Self::create_grid_from_single_row(&row, height)
-  }
-
-  /// Creates a grid of the given height with the given row
-  ///
-  /// # Example
-  /// ```
-  /// use screen_printer::printer::*;
-  ///
-  /// let row = "abcd";
-  /// let expected_grid = "abcd\nabcd\nabcd";
-  ///
-  /// let grid = Printer::create_grid_from_single_row(&row, 3);
-  ///
-  /// assert_eq!(expected_grid, grid);
-  /// ```
-  pub fn create_grid_from_single_row<T>(row: &T, height: usize) -> String
-  where
-    T: fmt::Display,
-  {
-    let rows = (0..height).fold(Vec::new(), |mut rows, _| {
-      rows.push(&row);
-
-      rows
-    });
-
-    Printer::create_grid_from_multiple_rows(&rows).unwrap()
+    frame
   }
 
   /// Creates a grid of the given size with the given list of characters
@@ -164,40 +175,6 @@ impl Printer {
     }
   }
 
-  /// Creates a grid of the given rows
-  ///
-  /// An error is returned if any of the rows isn't the same length as the first
-  ///
-  /// # Example
-  /// ```
-  /// use screen_printer::printer::*;
-  ///
-  /// let rows = vec![
-  ///   "abc",
-  ///   "def",
-  ///   "ghi",
-  /// ];
-  ///
-  /// let expected_grid = "abc\ndef\nghi";
-  ///
-  /// let grid = Printer::create_grid_from_multiple_rows(&rows).unwrap();
-  ///
-  /// assert_eq!(expected_grid, grid);
-  /// ```
-  pub fn create_grid_from_multiple_rows<T>(rows: &[T]) -> Result<String, PrintingError>
-  where
-    T: fmt::Display,
-  {
-    let rows: Vec<String> = rows.iter().map(|row| format!("{row}")).collect();
-    let width = rows[0].chars().count();
-
-    if Self::rows_have_same_lengths(&rows, width) {
-      Ok(rows.join("\n"))
-    } else {
-      Err(PrintingError::RowsDontMatchLengths)
-    }
-  }
-
   /// Moves the cursor up by the given height and prints the given grid.
   ///
   /// This is for printing over the previously printed grid.
@@ -210,7 +187,7 @@ impl Printer {
   ///
   /// let height = 10;
   /// let width = 10;
-  /// let grid = Printer::create_grid_from_single_character(&"a", width, height);
+  /// let grid = Printer::create_grid_from_single_character('a', width, height);
   ///
   /// print!("{}", "\n".repeat(height + 5)); // add some space for the grid
   /// Printer::print_over_previous_grid(grid, height);
@@ -221,40 +198,27 @@ impl Printer {
     let _ = io::stdout().flush();
   }
 
-  /// Creates a row of the given width with the given character.
-  ///
-  /// # Example
-  /// ```
-  /// use screen_printer::printer::*;
-  ///
-  /// let width = 3;
-  /// let row = Printer::get_row_of_character(&"a", width);
-  ///
-  /// assert_eq!(row, "aaa".to_string());
-  /// ```
-  pub fn get_row_of_character<T>(character: &T, width: usize) -> String
-  where
-    T: fmt::Display,
-  {
-    (0..width).fold(String::new(), |row, _| format!("{row}{character}"))
+  pub fn get_grid_dimensions(&self) -> Result<(usize, usize), PrintingError> {
+    let (Some(width), Some(height)) = (self.grid_width, self.grid_height) else {
+      return Err(PrintingError::GridDimensionsNotDefined);
+    };
+
+    Ok((width, height))
   }
 
-  /// Returns the (width, height) of the printer.
-  pub fn current_dimensions(&self) -> (usize, usize) {
-    (self.grid_width, self.grid_height)
+  pub fn assign_options(&mut self, printing_options: PrintingOptions) {
+    self.printing_options = Some(printing_options)
   }
 
-  /// Returns true of all given rows have the same amount of characters as the expected input.
-  fn rows_have_same_lengths(rows: &[String], expected_width: usize) -> bool {
-    rows.iter().all(|row| row.chars().count() == expected_width)
+  pub(crate) fn get_origin_position(&self) -> Result<(usize, usize), PrintingError> {
+    self
+      .origin_position
+      .ok_or(PrintingError::CursorPositionNotDefined)
   }
 }
 
 /// Creates a grid of the given width out of the given 1D array of characters.
-fn create_grid_from_characters<T>(characters: &[T], width: usize) -> String
-where
-  T: fmt::Display,
-{
+fn create_grid_from_characters<T: fmt::Display>(characters: &[T], width: usize) -> String {
   characters
     .chunks(width)
     .map(|row| {
