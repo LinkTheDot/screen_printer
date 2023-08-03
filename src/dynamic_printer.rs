@@ -1,5 +1,4 @@
 use crate::printer::*;
-use guard::guard;
 use std::{io, io::Write};
 use termion::cursor::DetectCursorPos;
 use termion::input::MouseTerminal;
@@ -7,235 +6,330 @@ use termion::raw::IntoRawMode;
 
 mod tests;
 
-/// A PixelDifference will contain a single instance of
-/// a contigious string of different pixels within the grid.
-///
-/// The index in which the first different pixel occupies
-/// is also stored.
-#[derive(Debug, PartialEq)]
-struct PixelDifference {
-  pixels: String,
-  index: usize,
-}
-
-impl PixelDifference {
-  /// Creates a new pixel difference with the given pixel and index
-  fn new(pixel: String, index: usize) -> Self {
-    Self {
-      pixels: pixel,
-      index,
-    }
-  }
-
-  /// Checks if the current index is bordering the grid, and adds a newline
-  /// to the PixelDifference if it is.
-  fn check_newlines(&mut self, current_index: usize, grid_width: usize, grid_size: usize) {
-    if current_index % grid_width == 0 && current_index != grid_size - 1 {
-      self.pixels.push('\n');
-    }
-  }
-}
-
 pub trait DynamicPrinter {
-  /// The dynamic_print() method will efficiently print differences of passed
-  /// in grids.
+  /// The dynamic_print method is the main part of the screen_printer crate.
+  /// This method will print any grid to the terminal based on the [`PrintingPosition`](crate::printing_position::PrintingPosition).
+  ///
+  /// When printing a new grid to the screen, it'll compare every character from the previous one, and only print the characters that have changed.
   ///
   /// # Example
   /// ```rust,no_run
   /// use screen_printer::printer::*;
   ///
-  /// let width = 3;
-  /// let height = 3;
-  /// let mut printer = Printer::new(width, height);
+  /// const WIDTH: usize = 3;
+  /// const HEIGHT: usize = 3;
   ///
-  /// let grid1 = "abc\n123\nxyz".to_string();
-  /// let grid2 = "abc\n123\nasd".to_string();
+  /// fn main() {
+  ///   print!("\u{1b}[2J"); // Clear all text on the terminal
+  ///   // The default printing position is the bottom left of the terminal
+  ///   let mut printer = Printer::new_with_printing_position(PrintingPosition::default());
   ///
-  /// // The first print will remember where to print any future grids.
-  /// printer.dynamic_print(grid1).unwrap();
-  /// // Should look like
-  /// // abc
-  /// // 123
-  /// // xyz
+  ///   // Create the first grid to be printed.
+  ///   let grid_1 = "abc\n123\nxyz".to_string();
+  ///   // print the first grid.
+  ///   printer.dynamic_print(grid_1).unwrap();
   ///
-  /// // The second print will compare the new grid, and
-  /// // print only the differences from the previously printed grid.
-  /// printer.dynamic_print(grid2).unwrap();
-  /// // Should look like
-  /// // abc
-  /// // 123
-  /// // asd < only part that got printed
+  ///   // Wait before printing the second grid.
+  ///   std::thread::sleep(std::time::Duration::from_millis(500));
+  ///
+  ///   // Create the second grid to be printed.
+  ///   let grid_2 = "abc\n789\nxyz".to_string();
+  ///   // Print the second grid.
+  ///   // This will only end up printing the difference between the two grids/
+  ///   printer.dynamic_print(grid_2).unwrap();
+  /// }
   /// ```
   ///
-  /// The way the printer remembers where to print a grid is based on where the cursor was
-  /// upon first print.
-  /// The cursor's location marks the bottom right of the grid.
-  /// If the x or y of origin are to go out of bounds, said axis will be set to 0.
+  /// This will result in
   ///
-  /// An error is returned when the cursor can't be read or the passed in grid does not match the expected size.
-  fn dynamic_print(&mut self, grid: String) -> Result<(), PrintingError>;
+  /// ```bash,no_run
+  /// abc
+  /// 123
+  /// xyz
+  /// ```
+  ///
+  /// Into
+  ///
+  /// ```bash,no_run
+  /// abc
+  /// 789 < only line that was actually printed
+  /// xyz
+  /// ```
+  ///
+  /// For more information about using the printer, refer to the example on [`github`](https://github.com/LinkTheDot/screen_printer/blob/master/examples/dynamic_printer.rs)
+  ///
+  /// # Errors
+  ///
+  /// - The given grid wasn't rectangular in shape.
+  /// - The given grid is larger than the current dimensions of the terminal.
+  ///
+  /// ### When no printing options are defined
+  ///
+  /// - Failed to get stdout in raw mode.
+  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
+  fn dynamic_print(&mut self, new_grid: String) -> Result<(), PrintingError>;
 
-  /// Resets all data for the printer and assigns it a new size.
-  fn reset(&mut self, new_width: Option<usize>, new_height: Option<usize>);
-
-  /// Replaces every character in the grid with whitespace
+  /// Replaces every character in the grid with whitespace.
+  ///
+  /// # Errors
+  ///
+  /// - Grid dimensions weren't defined.
+  /// - Origin wasn't defined.
   fn clear_grid(&mut self) -> Result<(), PrintingError>;
 }
 
 impl DynamicPrinter for Printer {
-  fn dynamic_print(&mut self, grid: String) -> Result<(), PrintingError> {
-    if self.grid_size_matches_previous_grid(&grid) {
-      let different_pixels = self.get_grid_diff(&grid);
+  fn dynamic_print(&mut self, new_grid: String) -> Result<(), PrintingError> {
+    let terminal_dimensions = Printer::get_terminal_dimensions()?;
+    let new_grid_dimensions = Self::valid_rectangle_check(&new_grid)?;
 
-      let printable_difference = self.get_printable_diff(different_pixels);
+    if new_grid_dimensions.0 > terminal_dimensions.0
+      || new_grid_dimensions.1 > terminal_dimensions.1
+    {
+      return Err(PrintingError::GridLargerThanTerminal);
+    }
 
-      print!("{printable_difference}");
-    } else if self.previous_grid.is_empty() {
-      self.set_origin()?;
-      self.move_to_origin();
+    if !self.previous_grid.is_empty() && !self.printing_position_changed_since_last_print {
+      let new_origin = self.get_new_origin(new_grid_dimensions, terminal_dimensions)?;
+      let (old_grid_width, old_grid_height) = self.get_grid_dimensions()?;
 
-      print!("{grid}");
+      if old_grid_width != new_grid_dimensions.0 || old_grid_height != new_grid_dimensions.1 {
+        self.replace_currently_printed_grid(
+          &new_grid,
+          Some(new_grid_dimensions),
+          terminal_dimensions,
+        )?;
+      }
+
+      self.origin_position = Some(new_origin);
+
+      let printable_difference = self.get_printable_difference(&new_grid)?;
+
+      print!("{}", printable_difference);
     } else {
-      let previous_grid_size = self.previous_grid.chars().count();
-      let new_grid_size = grid.chars().count();
-
-      return Err(PrintingError::InvalidGridInput(LengthErrorData::new(
-        previous_grid_size,
-        new_grid_size,
-      )));
+      self.replace_currently_printed_grid(
+        &new_grid,
+        Some(new_grid_dimensions),
+        terminal_dimensions,
+      )?;
     }
 
     let _ = io::stdout().flush();
-    self.previous_grid = grid;
+    self.previous_grid = new_grid;
+    self.grid_width = Some(new_grid_dimensions.0);
+    self.grid_height = Some(new_grid_dimensions.1);
+    self.printing_position_changed_since_last_print = false;
 
     Ok(())
   }
 
-  fn reset(&mut self, new_width: Option<usize>, new_height: Option<usize>) {
-    self.previous_grid = String::new();
-
-    if let Some(width) = new_width {
-      self.grid_width = width;
-    }
-
-    if let Some(height) = new_height {
-      self.grid_height = height;
-    }
-  }
-
   fn clear_grid(&mut self) -> Result<(), PrintingError> {
-    let empty_grid =
-      Self::create_grid_from_single_character(&" ", self.grid_width, self.grid_height);
+    let (grid_height, grid_width) = self.get_grid_dimensions()?;
+    let empty_grid = Self::create_grid_from_single_character(' ', grid_width, grid_height);
 
-    self.dynamic_print(empty_grid)?;
+    let printer_origin = self.get_origin_position()?;
+    print_grid_freestanding(&empty_grid, printer_origin)?;
 
     Ok(())
   }
 }
 
 trait DynamicPrinterMethods {
-  /// Returns true if both the previous and new grid have the same
-  /// length per row and amount of rows
-  fn grid_size_matches_previous_grid(&self, grid: &str) -> bool;
-
-  /// Gets a list of the pixel indexes that were different from the previous grid
-  fn get_grid_diff(&self, grid: &str) -> Vec<PixelDifference>;
+  /// Gets a list of escape codes for cursor movement followed by
+  /// the difference in pixels between the old and new grids.
+  ///
+  /// # Errors
+  ///
+  /// - When origin hasn't been set before calling this method.
+  /// - When the old grid's dimensions haven't been set before calling this method.
+  fn get_printable_difference(&self, grid: &str) -> Result<String, PrintingError>;
 
   /// Moves the cursor to the assigned origin.
-  fn move_to_origin(&self);
-
-  /// Assigns origin with the current cursor position and the size of the grid.
   ///
-  /// If the cursor is at (10, 10) and the grid is 5x5 then origin will be set to (5, 5).
-  /// If the grid is larger than the cursor's current position, origin will be assigned 0 in it's place.
-  /// This means that if the cursor is at (10, 10), and the grid is 20x5, origin will be assigned to (0, 5).
-  fn set_origin(&mut self) -> Result<(), PrintingError>;
+  /// # Errors
+  ///
+  /// - When origin isn't set.
+  fn move_to_origin(&self) -> Result<(), PrintingError>;
+
+  /// Returns a new origin based on a few parameters:
+  /// The dimensions of the new grid,
+  /// The dimensions of the terminal and;
+  /// The current printing settings, or where the terminal cursor is if there are none.
+  ///
+  /// # Errors
+  /// - Failed to get stdout in raw mode.
+  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
+  fn get_new_origin(
+    &mut self,
+    new_grid_dimensions: (usize, usize),
+    terminal_dimensions: (usize, usize),
+  ) -> Result<(usize, usize), PrintingError>;
+
+  /// Returns the (x, y) of the printer's new origin
+  ///
+  /// # Errors
+  ///
+  /// - Failed to get stdout in raw mode.
+  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
+  fn get_origin_from_cursor(
+    new_grid_dimensions: (usize, usize),
+  ) -> Result<(usize, usize), PrintingError>;
+  /// Returns the (x, y) of the printer's new origin
+  ///
+  /// # Errors
+  ///
+  /// - When no printing position exists.
+  fn get_origin_from_printing_position(
+    &self,
+    new_grid_dimensions: (usize, usize),
+    terminal_dimensions: (usize, usize),
+  ) -> Result<(usize, usize), PrintingError>;
 
   /// Returns the current position of the cursor
+  ///
+  /// # Errors
+  ///
+  /// - Failed to get stdout in raw mode.
+  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
   fn get_current_cursor_position() -> Result<(usize, usize), PrintingError>;
 
-  fn get_printable_diff(&mut self, pixel_differences: Vec<PixelDifference>) -> String;
+  /// Prints whitespace over the previous grid, then prints the new one wherever it needs to go.
+  ///
+  /// Takes optional dimensions for the new grid for if they've already been calculated.
+  /// Does not check if those dimensions are valid or not.
+  ///
+  /// # Errors
+  ///
+  /// - The new grid wasn't rectangular in shape.
+  /// - Grid dimensions weren't set.
+  /// - Origin wasn't set.
+  ///
+  /// ### When no printing options are defined
+  ///
+  /// - Failed to get stdout in raw mode.
+  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
+  fn replace_currently_printed_grid(
+    &mut self,
+    new_grid: &str,
+    new_grid_dimensions: Option<(usize, usize)>,
+    terminal_dimensions: (usize, usize),
+  ) -> Result<(), PrintingError>;
 }
 
 impl DynamicPrinterMethods for Printer {
-  fn grid_size_matches_previous_grid(&self, grid: &str) -> bool {
-    let new_grid_height = grid.rsplit('\n').count();
-    let old_grid_height = self.previous_grid.rsplit('\n').count();
-
-    let mut new_grid_split = grid.rsplit('\n');
-
-    guard!(let Some(old_grid_row) = self.previous_grid.rsplit('\n').next() else { return false; });
-    let old_grid_row_width = old_grid_row.chars().count();
-
-    new_grid_height == old_grid_height
-      && new_grid_split.all(|new_row| new_row.chars().count() == old_grid_row_width)
-  }
-
-  fn get_grid_diff(&self, grid: &str) -> Vec<PixelDifference> {
+  fn get_printable_difference(&self, grid: &str) -> Result<String, PrintingError> {
     let old_grid = self.previous_grid.replace('\n', "");
     let new_grid = grid.replace('\n', "");
-
     let grid_size = new_grid.chars().count();
-    let grid_iter = old_grid.chars().zip(new_grid.chars());
 
-    let mut last_edited_pixel_index = 0;
+    let (origin_x, origin_y) = self.get_origin_position()?;
+    let (grid_width, _) = self.get_grid_dimensions()?;
 
-    grid_iter.enumerate().fold(
-      Vec::new(),
-      |mut different_pixels, (pixel_index, (old_pixel, new_pixel))| {
-        if new_pixel != old_pixel {
-          if let Some(latest_pixel) = different_pixels.get_mut_top() {
-            if last_edited_pixel_index == pixel_index - 1 || latest_pixel.index == pixel_index - 1 {
-              latest_pixel.check_newlines(pixel_index, self.grid_width, grid_size);
+    let mut last_appended_pixel_index = 100000;
+    let mut latest_pixel_index = 100000;
+    let mut printable_difference = String::new();
 
-              latest_pixel.pixels.push_str(&new_pixel.to_string());
-
-              last_edited_pixel_index = pixel_index;
-              return different_pixels;
-            }
-          }
-
-          let pixel_difference = PixelDifference::new(new_pixel.to_string(), pixel_index);
-
-          different_pixels.push(pixel_difference);
+    old_grid.chars().zip(new_grid.chars()).enumerate().for_each(
+      |(pixel_index, (old_pixel, new_pixel))| {
+        if new_pixel == old_pixel {
+          return;
         }
 
-        different_pixels
+        if pixel_index != 0
+          && (last_appended_pixel_index == pixel_index - 1 || latest_pixel_index == pixel_index - 1)
+          && (pixel_index % grid_width != 0 || pixel_index == grid_size - 1)
+        {
+          printable_difference.push(new_pixel);
+
+          last_appended_pixel_index = pixel_index;
+        } else {
+          let mut index_as_coords = pixel_index.index_as_coordinates(&grid_width);
+          index_as_coords.0 += origin_x;
+          index_as_coords.1 += origin_y;
+
+          latest_pixel_index = pixel_index;
+
+          printable_difference.push_str(&format!(
+            "\x1B[{};{}H{}",
+            index_as_coords.1, index_as_coords.0, new_pixel
+          ));
+        }
       },
-    )
-  }
-
-  fn move_to_origin(&self) {
-    print!(
-      "\x1B[{};{}H",
-      self.origin_position.1, self.origin_position.0
     );
+
+    Ok(printable_difference)
   }
 
-  fn set_origin(&mut self) -> Result<(), PrintingError> {
-    let (mut x, mut y) = Self::get_current_cursor_position()?;
+  fn move_to_origin(&self) -> Result<(), PrintingError> {
+    let Some((x, y)) = self.origin_position else {
+      return Err(PrintingError::CursorPositionNotDefined);
+    };
 
-    if y > self.grid_height {
-      y -= self.grid_height;
-    } else {
-      y = 0;
-    }
-
-    if x > self.grid_width {
-      x -= self.grid_width;
-    } else {
-      x = 0;
-    }
-
-    self.origin_position.0 = x;
-    self.origin_position.1 = y;
+    print!("\x1B[{};{}H", y, x);
 
     Ok(())
   }
 
+  fn get_new_origin(
+    &mut self,
+    new_grid_dimensions: (usize, usize),
+    terminal_dimensions: (usize, usize),
+  ) -> Result<(usize, usize), PrintingError> {
+    let origin: (usize, usize) = if self.get_current_printing_position().is_none() {
+      Self::get_origin_from_cursor(new_grid_dimensions)?
+    } else {
+      self.get_origin_from_printing_position(new_grid_dimensions, terminal_dimensions)?
+    };
+
+    Ok(origin)
+  }
+
+  fn get_origin_from_cursor(
+    new_grid_dimensions: (usize, usize),
+  ) -> Result<(usize, usize), PrintingError> {
+    let (mut x, mut y) = Self::get_current_cursor_position()?;
+    let (grid_width, grid_height) = new_grid_dimensions;
+
+    x = (x as isize - grid_width as isize).max(1) as usize;
+    y = (y as isize - grid_height as isize).max(1) as usize;
+
+    Ok((x, y))
+  }
+
+  fn get_origin_from_printing_position(
+    &self,
+    (grid_width, grid_height): (usize, usize),
+    (terminal_width, terminal_height): (usize, usize),
+  ) -> Result<(usize, usize), PrintingError> {
+    let Some(printing_position) = self.get_current_printing_position() else {
+      return Err(PrintingError::MissingPrintingPosition);
+    };
+
+    let x: usize = match printing_position.x_printing_position {
+      XPrintingPosition::Left => 1,
+      XPrintingPosition::Middle => {
+        ((terminal_width as f32 / 2.0).floor() - (grid_width as f32 / 2.0).floor()).floor() as usize
+      }
+
+      XPrintingPosition::Right => (terminal_width - grid_width) + 1,
+    };
+
+    let y: usize = match printing_position.y_printing_position {
+      YPrintingPosition::Top => 1,
+      YPrintingPosition::Middle => ((terminal_height as f32 / 2.0).floor()
+        - (grid_height as f32 / 2.0).floor())
+      .floor() as usize,
+      YPrintingPosition::Bottom => (terminal_height - grid_height) + 1,
+    };
+
+    Ok((x, y))
+  }
+
   fn get_current_cursor_position() -> Result<(usize, usize), PrintingError> {
-    let mut stdout = MouseTerminal::from(io::stdout().into_raw_mode().unwrap());
-    let cursor_position = stdout.cursor_pos();
+    let cursor_position = match io::stdout().into_raw_mode() {
+      Ok(raw_stdout) => MouseTerminal::from(raw_stdout).cursor_pos(),
+      Err(error) => return Err(PrintingError::CursorError(error.to_string())),
+    };
 
     match cursor_position {
       Ok(position) => Ok((position.0 as usize, position.1 as usize)),
@@ -243,38 +337,84 @@ impl DynamicPrinterMethods for Printer {
     }
   }
 
-  fn get_printable_diff(&mut self, pixel_differences: Vec<PixelDifference>) -> String {
-    pixel_differences
-      .iter()
-      .fold(String::new(), |mut printable_diff, pixel_difference| {
-        let (mut x, mut y) = pixel_difference
-          .index
-          .index_as_coordinates(&self.grid_width);
+  fn replace_currently_printed_grid(
+    &mut self,
+    new_grid: &str,
+    new_grid_dimensions: Option<(usize, usize)>,
+    terminal_dimensions: (usize, usize),
+  ) -> Result<(), PrintingError> {
+    let (new_grid_width, new_grid_height) = if let Some(new_grid_dimensions) = new_grid_dimensions {
+      new_grid_dimensions
+    } else {
+      Self::valid_rectangle_check(new_grid)?
+    };
 
-        x += self.origin_position.0 + 1;
-        y += self.origin_position.1;
+    if self.get_origin_position().is_err() {
+      self.origin_position =
+        Some(self.get_new_origin((new_grid_width, new_grid_height), terminal_dimensions)?);
+    }
 
-        let cursor_movement = format!("\x1B[{y};{x}H");
-        let movement_with_pixels = format!("{}{}", cursor_movement, pixel_difference.pixels);
+    self.grid_width = Some(new_grid_width);
+    self.grid_height = Some(new_grid_width);
 
-        printable_diff.push_str(&movement_with_pixels);
+    self.clear_grid()?;
 
-        printable_diff
-      })
+    self.origin_position =
+      Some(self.get_new_origin((new_grid_width, new_grid_height), terminal_dimensions)?);
+
+    let printer_origin = self.get_origin_position()?;
+    print_grid_freestanding(new_grid, printer_origin)?;
+
+    Ok(())
   }
+}
+
+/// Splits the grid into rows and moves the cursor down to print each row at the given position, starting from the top left.
+/// Does not check if the printed grid will overflow off the right or bottom of the terminal.
+///
+/// # Errors
+///
+/// - The passed in grid isn't rectangular.
+fn print_grid_freestanding(
+  grid: &str,
+  printing_position: (usize, usize),
+) -> Result<(), PrintingError> {
+  Printer::valid_rectangle_check(grid)?;
+  let mut grid_with_cursor_movements = String::new();
+  let cursor_movement = format!("\x1B[1B\x1B[{}G", printing_position.0);
+
+  for grid_row in grid.split('\n') {
+    grid_with_cursor_movements.push_str(grid_row);
+    grid_with_cursor_movements.push_str(&cursor_movement);
+  }
+
+  print!("\x1B[{};{}H", printing_position.1, printing_position.0);
+  print!("{}", grid_with_cursor_movements);
+
+  Ok(())
 }
 
 trait VecMethods<T> {
   /// Gets a mutable reference to the top most item in a vector
+  ///
+  /// # Example
+  /// ```ignore
+  /// let mut data = vec![0, 2, 4, 5];
+  ///
+  /// let mut top_item = data.get_mut_top();
+  /// *top_item += 1;
+  ///
+  /// assert_eq!(data.get(3), Some(6));
+  /// ```
   fn get_mut_top(&mut self) -> Option<&mut T>;
 }
 
 impl<T> VecMethods<T> for std::vec::Vec<T> {
   fn get_mut_top(&mut self) -> Option<&mut T> {
-    let size = self.len();
+    let item_count = self.len();
 
-    if size != 0 {
-      self.get_mut(size - 1)
+    if !self.is_empty() {
+      self.get_mut(item_count - 1)
     } else {
       None
     }
@@ -282,7 +422,7 @@ impl<T> VecMethods<T> for std::vec::Vec<T> {
 }
 
 trait UsizeMethods {
-  /// Converts an index into coordinates
+  /// Converts an index into coordinates for the given grid's width.
   fn index_as_coordinates(&self, grid_width: &Self) -> (usize, usize);
 }
 

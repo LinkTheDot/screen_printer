@@ -1,46 +1,43 @@
 use rand::prelude::*;
 use screen_printer::printer::*;
-use std::{thread, time::Duration};
 
-const WIDTH: usize = 10;
-const HEIGHT: usize = 5;
-const WAIT_TIME: u64 = 400;
+const WIDTH: usize = 200;
+const HEIGHT: usize = 50;
 
 /// Creates a random list of numbers, prints them, then clears the grid.
 fn main() {
-  println!("{}", "\n".repeat(HEIGHT + 1));
+  print!("{}", termion::clear::All);
+  let _cursor_hider = termion::cursor::HideCursor::from(std::io::stdout());
 
-  let mut printer = Printer::new(WIDTH, HEIGHT);
+  // Create a printer with the options to print any grid in the center of the screen.
+  let mut printer = Printer::new_with_printing_position(PrintingPosition::new(
+    XPrintingPosition::Middle,
+    YPrintingPosition::Middle,
+  ));
 
-  for _ in 0..25 {
-    for _ in 0..4 {
-      // Get the grid data
-      let number_array = get_random_number_array(WIDTH * HEIGHT);
-      // Create the grid with the data
-      let grid =
-        Printer::create_grid_from_full_character_list(&number_array, WIDTH, HEIGHT).unwrap();
+  let mut rng = rand::thread_rng();
+  let mut list_of_numbers: Vec<u8> = [0; WIDTH * HEIGHT].into(); //Vec::with_capacity(WIDTH * HEIGHT);
 
-      // Print the grid
-      printer
-        .dynamic_print(grid)
-        .unwrap_or_else(|error| panic!("An error has occurred: '{error}'"));
+  for _ in 0..10000 {
+    // Update the grid data
+    update_random_number_array(&mut rng, &mut list_of_numbers);
 
-      thread::sleep(Duration::from_millis(WAIT_TIME));
-    }
+    // Create a grid with the data
+    let grid =
+      Printer::create_grid_from_full_character_list(&list_of_numbers, WIDTH, HEIGHT).unwrap();
 
-    // Clear the grid every 4 prints for a flashing effect
-    printer.clear_grid().unwrap();
-    thread::sleep(Duration::from_millis(WAIT_TIME / 2));
+    // Print the grid
+    printer
+      .dynamic_print(grid)
+      .unwrap_or_else(|error| panic!("An error has occurred: '{error}'"));
   }
+
+  print!("{}", termion::clear::All);
 }
 
 /// Retuns a list of random numbers 0-9
-fn get_random_number_array(total_size: usize) -> Vec<u16> {
-  let mut rng = rand::thread_rng();
-
-  (0..total_size).fold(Vec::new(), |mut number_array, _| {
-    number_array.push(rng.gen_range(0..9));
-
-    number_array
-  })
+fn update_random_number_array(rng: &mut ThreadRng, number_array: &mut [u8]) {
+  for num in number_array.iter_mut() {
+    *num = rng.gen_range(0..9);
+  }
 }
