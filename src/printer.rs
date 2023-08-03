@@ -1,51 +1,15 @@
-// Change printing options to PrintingPositions
+// Create documentation for:
+//  - Printer struct.
+//  - PrintingPosition struct.
+//  - dynamic_print method and;
+//  - probably a few other things I forgot to document.
 
 pub use crate::dynamic_printer::*;
+pub use crate::errors::*;
+pub use crate::printing_position::*;
 use std::cmp::Ordering;
 use std::fmt;
 use std::{io, io::Write};
-
-/// These are the possible ways the program can fail.
-///
-/// Each error will contain 'ErrorData' which holds the
-/// expected and outcome results in the event of the error.
-#[derive(Debug)]
-pub enum PrintingError {
-  /// When creating a grid, the defined size of the grid was larger than the given amount of characters.
-  TooManyCharacters(LengthErrorData),
-  /// When creating a grid, the defined size of the grid was smaller than the given amount of characters.
-  TooLittleCharacters(LengthErrorData),
-
-  /// A grid was passed in and wasn't in a 2d shape.
-  ///
-  /// Grids are stored as a 1d string, but treated as a 2d shape.
-  /// Each column is a character, and each row is a new line.
-  NonRectangularGrid,
-
-  /// When no [`printing positions`](PrintingPosition) are defined, the printer will attempt to read the
-  /// position of the cursor to print the grid.
-  /// This error is returned when getting the position of the cursor failed.
-  ///
-  /// The error message is contained.
-  CursorError(String),
-
-  /// When attempting to get the dimensions of the terminal, an error occurred.
-  ///
-  /// The error message is contained
-  FailedToGetTerminalDimensions(String),
-  /// This error is returned when a grid passed in to [`dynamic_print`](Printer::dynamic_print) is
-  /// larger than the dimensions of the terminal.
-  GridLargerThanTerminal,
-
-  /// When attempting to get the dimensions of the grid through [`get_grid_dimensions`](Printer::get_grid_dimensions),
-  /// there was no stored dimensions for the grid.
-  GridDimensionsNotDefined,
-  /// When attempting to get the origin position of the printer through [`get_origin_position`](Printer::get_origin_position), there was no stored position for the grid.
-  CursorPositionNotDefined,
-
-  /// There was no [`PrintingPosition`](PrintingPosition) when attempting to get origin from printing position.
-  MissingPrintingPosition,
-}
 
 impl fmt::Display for PrintingError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -53,7 +17,79 @@ impl fmt::Display for PrintingError {
   }
 }
 
-// Define how to use the printer
+/// # Screen Printer
+///
+/// Screen Printer is a rust crate that will allow you to build and print arrays of
+/// data into a grid format.
+///
+/// The purpose of this crate is to make it easier to print rectangular blocks of text to the terminal.
+/// Including features like:
+///
+/// - `DynamicPrint`, which only prints any characters that changed from any previously printed grid\*.
+/// - `PrintingPosition`, which allows you to print your string to different places on the terminal, such as the center.
+///
+/// \* If the grid changes in size or position it is reprinted in its entirety.
+///
+/// ## Examples
+///
+/// #### Using the dynamic print method to print a grid
+///
+/// The core part of this crate is the [`dynamic_print`](crate::dynamic_printer::DynamicPrinter::dynamic_print) method.
+/// This will take a rectangular grid of characters, and print only the parts of the grid that have changed since the last print.
+///
+/// ```rust,no_run
+/// use screen_printer::printer::*;
+///
+/// const WIDTH: usize = 3;
+/// const HEIGHT: usize = 3;
+///
+/// fn main() {
+///   print!("\u{1b}[2J"); // Clear all text on the terminal
+///   // The default printing position is the bottom left of the terminal
+///   let mut printer = Printer::new_with_printing_position(PrintingPosition::default());
+///
+///   // Create the first grid to be printed.
+///   let grid_1 = "abc\n123\nxyz".to_string();
+///   // print the first grid.
+///   printer.dynamic_print(grid_1).unwrap();
+///
+///   // Wait before printing the second grid.
+///   std::thread::sleep(std::time::Duration::from_millis(500));
+///
+///   // Create the second grid to be printed.
+///   let grid_2 = "abc\n789\nxyz".to_string();
+///   // Print the second grid.
+///   // This will only end up printing the difference between the two grids/
+///   printer.dynamic_print(grid_2).unwrap();
+/// }
+/// ```
+///
+/// This will result in
+///
+/// ```bash,no_run
+/// abc
+/// 123
+/// xyz
+/// ```
+///
+/// Into
+///
+/// ```bash,no_run
+/// abc
+/// 789 < only line that was actually printed
+/// xyz
+/// ```
+///
+/// #### Printing Position
+///
+/// Another feature shown in the above example, the [`PrintingPosition`](crate::printing_position::PrintingPosition).
+///
+/// This will print the grid in any of the 9 defined positions on the terminal.
+/// These are split by the X and Y axes:
+///
+/// - Left/Top,
+/// - Middle, and;
+/// - Right/Bottom.
 #[derive(Default, Debug)]
 pub struct Printer {
   pub(crate) previous_grid: String,
@@ -65,71 +101,6 @@ pub struct Printer {
 
   printing_position: Option<PrintingPosition>,
   pub(crate) printing_position_changed_since_last_print: bool,
-}
-
-/// Error data for when attempting to compare strings of differing lengths.
-#[derive(Debug)]
-pub struct LengthErrorData {
-  pub expected_length: usize,
-  pub got_length: usize,
-}
-
-impl LengthErrorData {
-  /// Creates a new LengthErrorData for the expected length and actual length
-  pub fn new(expected_length: usize, got_length: usize) -> Self {
-    Self {
-      expected_length,
-      got_length,
-    }
-  }
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct PrintingPosition {
-  pub x_printing_position: XPrintingPosition,
-  pub y_printing_position: YPrintingPosition,
-}
-
-#[derive(Default, Debug, PartialEq, Eq, Clone)]
-pub enum XPrintingPosition {
-  #[default]
-  Left,
-  Middle,
-  Right,
-}
-
-#[derive(Default, Debug, PartialEq, Eq, Clone)]
-pub enum YPrintingPosition {
-  Top,
-  Middle,
-  #[default]
-  Bottom,
-}
-
-impl PrintingPosition {
-  pub fn new(
-    x_printing_position: XPrintingPosition,
-    y_printing_position: YPrintingPosition,
-  ) -> Self {
-    Self {
-      x_printing_position,
-      y_printing_position,
-    }
-  }
-
-  pub fn with_x_printing_position(x_printing_position: XPrintingPosition) -> Self {
-    Self {
-      x_printing_position,
-      ..Default::default()
-    }
-  }
-
-  pub fn with_y_printing_position(y_printing_position: YPrintingPosition) -> Self {
-    Self {
-      y_printing_position,
-      ..Default::default()
-    }
-  }
 }
 
 impl Printer {

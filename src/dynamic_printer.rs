@@ -7,7 +7,66 @@ use termion::raw::IntoRawMode;
 mod tests;
 
 pub trait DynamicPrinter {
-  /// An error is returned when the cursor can't be read or the passed in grid does not match the expected size.
+  /// The dynamic_print method is the main part of the screen_printer crate.
+  /// This method will print any grid to the terminal based on the [`PrintingPosition`](crate::printing_position::PrintingPosition).
+  ///
+  /// When printing a new grid to the screen, it'll compare every character from the previous one, and only print the characters that have changed.
+  ///
+  /// # Example
+  /// ```rust,no_run
+  /// use screen_printer::printer::*;
+  ///
+  /// const WIDTH: usize = 3;
+  /// const HEIGHT: usize = 3;
+  ///
+  /// fn main() {
+  ///   print!("\u{1b}[2J"); // Clear all text on the terminal
+  ///   // The default printing position is the bottom left of the terminal
+  ///   let mut printer = Printer::new_with_printing_position(PrintingPosition::default());
+  ///
+  ///   // Create the first grid to be printed.
+  ///   let grid_1 = "abc\n123\nxyz".to_string();
+  ///   // print the first grid.
+  ///   printer.dynamic_print(grid_1).unwrap();
+  ///
+  ///   // Wait before printing the second grid.
+  ///   std::thread::sleep(std::time::Duration::from_millis(500));
+  ///
+  ///   // Create the second grid to be printed.
+  ///   let grid_2 = "abc\n789\nxyz".to_string();
+  ///   // Print the second grid.
+  ///   // This will only end up printing the difference between the two grids/
+  ///   printer.dynamic_print(grid_2).unwrap();
+  /// }
+  /// ```
+  ///
+  /// This will result in
+  ///
+  /// ```bash,no_run
+  /// abc
+  /// 123
+  /// xyz
+  /// ```
+  ///
+  /// Into
+  ///
+  /// ```bash,no_run
+  /// abc
+  /// 789 < only line that was actually printed
+  /// xyz
+  /// ```
+  ///
+  /// For more information about using the printer, refer to the example on [`github`](https://github.com/LinkTheDot/screen_printer/blob/master/examples/dynamic_printer.rs)
+  ///
+  /// # Errors
+  ///
+  /// - The given grid wasn't rectangular in shape.
+  /// - The given grid is larger than the current dimensions of the terminal.
+  ///
+  /// ### When no printing options are defined
+  ///
+  /// - Failed to get stdout in raw mode.
+  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
   fn dynamic_print(&mut self, new_grid: String) -> Result<(), PrintingError>;
 
   /// Replaces every character in the grid with whitespace.
@@ -363,7 +422,7 @@ impl<T> VecMethods<T> for std::vec::Vec<T> {
 }
 
 trait UsizeMethods {
-  /// Converts an index into coordinates
+  /// Converts an index into coordinates for the given grid's width.
   fn index_as_coordinates(&self, grid_width: &Self) -> (usize, usize);
 }
 
