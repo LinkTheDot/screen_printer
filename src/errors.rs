@@ -2,7 +2,7 @@
 ///
 /// Each error will contain 'ErrorData' which holds the
 /// expected and outcome results in the event of the error.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum PrintingError {
   /// When creating a grid, the defined size of the grid was larger than the given amount of characters.
   TooManyCharacters(LengthErrorData),
@@ -41,7 +41,7 @@ pub enum PrintingError {
 
 /// When creating a grid from [`crate::printer::Printer::create_grid_from_full_character_list`](crate::printer::Printer::create_grid_from_full_character_list),
 /// the sizes given and the actual amount of characters didn't match.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LengthErrorData {
   pub expected_character_count: usize,
   pub actual_character_count: usize,
