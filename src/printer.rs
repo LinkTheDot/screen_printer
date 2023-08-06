@@ -337,6 +337,31 @@ impl Printer {
       ..Default::default()
     }
   }
+
+  pub(crate) fn update_origin(&mut self, new_origin: (usize, usize)) {
+    if let Ok(current_origin) = self.get_origin_position() {
+      if current_origin.0 != new_origin.0 || current_origin.1 != new_origin.1 {
+        self.printing_position_changed_since_last_print = true;
+      }
+      // } else {
+      //   self.printing_position_changed_since_last_print = true;
+    }
+
+    self.origin_position = Some(new_origin);
+  }
+
+  pub(crate) fn update_dimensions(&mut self, new_dimensions: (usize, usize)) {
+    if let Ok(current_dimensions) = self.get_grid_dimensions() {
+      if current_dimensions.0 != new_dimensions.0 || current_dimensions.1 != new_dimensions.1 {
+        self.printing_position_changed_since_last_print = true;
+      }
+      // } else {
+      //   self.printing_position_changed_since_last_print = true;
+    }
+
+    self.grid_width = Some(new_dimensions.0);
+    self.grid_height = Some(new_dimensions.1);
+  }
 }
 
 /// Creates a grid of the given width out of the given 1D array of characters.

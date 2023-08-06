@@ -89,46 +89,48 @@ impl DynamicPrinter for Printer {
       return Err(PrintingError::GridLargerThanTerminal);
     }
 
+    if let Ok((old_grid_width, old_grid_height)) = self.get_grid_dimensions() {
+      if old_grid_width != new_grid_dimensions.0 || old_grid_height != new_grid_dimensions.1 {
+        self.printing_position_changed_since_last_print = true;
+      }
+    }
+
     if !self.previous_grid.is_empty() && !self.printing_position_changed_since_last_print {
       let new_origin = self.get_new_origin(new_grid_dimensions, terminal_dimensions)?;
-      let (old_grid_width, old_grid_height) = self.get_grid_dimensions()?;
-
-      if old_grid_width != new_grid_dimensions.0 || old_grid_height != new_grid_dimensions.1 {
-        self.replace_currently_printed_grid(
-          &new_grid,
-          Some(new_grid_dimensions),
-          terminal_dimensions,
-        )?;
-      }
-
-      self.origin_position = Some(new_origin);
+      self.update_origin(new_origin);
 
       let printable_difference = self.get_printable_difference(&new_grid)?;
 
       print!("{}", printable_difference);
-    } else {
+    } else if self.printing_position_changed_since_last_print {
       self.replace_currently_printed_grid(
         &new_grid,
         Some(new_grid_dimensions),
         terminal_dimensions,
       )?;
+    } else {
+      let new_origin = self.get_new_origin(new_grid_dimensions, terminal_dimensions)?;
+      self.update_origin(new_origin);
+
+      print_grid_freestanding(&new_grid, new_origin)?;
     }
 
     let _ = io::stdout().flush();
     self.previous_grid = new_grid;
-    self.grid_width = Some(new_grid_dimensions.0);
-    self.grid_height = Some(new_grid_dimensions.1);
+    self.update_dimensions(new_grid_dimensions);
     self.printing_position_changed_since_last_print = false;
 
     Ok(())
   }
 
   fn clear_grid(&mut self) -> Result<(), PrintingError> {
-    let (grid_height, grid_width) = self.get_grid_dimensions()?;
+    let (grid_width, grid_height) = self.get_grid_dimensions()?;
     let empty_grid = Self::create_grid_from_single_character(' ', grid_width, grid_height);
-
     let printer_origin = self.get_origin_position()?;
+
     print_grid_freestanding(&empty_grid, printer_origin)?;
+
+    self.previous_grid = empty_grid;
 
     Ok(())
   }
@@ -225,8 +227,8 @@ impl DynamicPrinterMethods for Printer {
     let (origin_x, origin_y) = self.get_origin_position()?;
     let (grid_width, _) = self.get_grid_dimensions()?;
 
-    let mut last_appended_pixel_index = 100000;
-    let mut latest_pixel_index = 100000;
+    let mut last_appended_pixel_index = 1000000;
+    let mut latest_pixel_index = 1000000;
     let mut printable_difference = String::new();
 
     old_grid.chars().zip(new_grid.chars()).enumerate().for_each(
@@ -349,21 +351,14 @@ impl DynamicPrinterMethods for Printer {
       Self::valid_rectangle_check(new_grid)?
     };
 
-    if self.get_origin_position().is_err() {
-      self.origin_position =
-        Some(self.get_new_origin((new_grid_width, new_grid_height), terminal_dimensions)?);
-    }
-
-    self.grid_width = Some(new_grid_width);
-    self.grid_height = Some(new_grid_width);
-
     self.clear_grid()?;
 
-    self.origin_position =
-      Some(self.get_new_origin((new_grid_width, new_grid_height), terminal_dimensions)?);
+    let new_origin = self.get_new_origin((new_grid_width, new_grid_height), terminal_dimensions)?;
 
-    let printer_origin = self.get_origin_position()?;
-    print_grid_freestanding(new_grid, printer_origin)?;
+    self.update_dimensions((new_grid_width, new_grid_height));
+    self.update_origin(new_origin);
+
+    print_grid_freestanding(new_grid, new_origin)?;
 
     Ok(())
   }
