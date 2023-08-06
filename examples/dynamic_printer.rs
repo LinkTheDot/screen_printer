@@ -1,10 +1,7 @@
 use rand::prelude::*;
 use screen_printer::printer::*;
 
-// const WIDTH: usize = 200;
-// const HEIGHT: usize = 50;
-
-/// Creates a random list of numbers, prints them, then clears the grid.
+/// Creates a random list of numbers and prints them.
 fn main() {
   print!("{}", termion::clear::All);
   let _cursor_hider = termion::cursor::HideCursor::from(std::io::stdout());
@@ -16,8 +13,6 @@ fn main() {
   ));
 
   let mut rng = rand::thread_rng();
-  // let mut first_list_of_numbers: Vec<u8> = [0; WIDTH * HEIGHT].into();
-  // let mut second_list_of_numbers: Vec<u8> = [0; WIDTH * HEIGHT].into();
 
   for iteration in 1..=6 {
     let (width, height, mut list_of_numbers): (usize, usize, Vec<u8>) = if iteration % 2 == 0 {
