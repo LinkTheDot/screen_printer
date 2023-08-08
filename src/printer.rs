@@ -99,26 +99,25 @@ pub struct Printer {
   pub(crate) grid_height: Option<usize>,
   pub(crate) grid_width: Option<usize>,
 
-  printing_position: Option<PrintingPosition>,
+  printing_position: PrintingPosition,
   pub(crate) printing_position_changed_since_last_print: bool,
 }
 
 impl Printer {
   /// Creates a new printer for the [`dynamic_print()`](Printer::dynamic_print) method.
+  ///
+  /// Uses the default [`PrintingPosition`](crate::printing_position::PrintingPosition)
   pub fn new() -> Self {
-    Self::new_printer(None)
+    Self {
+      ..Default::default()
+    }
   }
 
   /// Creates a new printer for the [`dynamic_print()`](Printer::dynamic_print) method with the given printing position.
   ///
   /// PrintingPositons tell the printer where to print any grids passed into it.
-  /// Refer to [`PrintingPosition`](PrintingPosition) for more information;
+  /// Refer to [`PrintingPosition`](crate::printing_position::PrintingPosition) for more information;
   pub fn new_with_printing_position(printing_position: PrintingPosition) -> Self {
-    Self::new_printer(Some(printing_position))
-  }
-
-  /// Creates a new printer with the given optional Position.
-  fn new_printer(printing_position: Option<PrintingPosition>) -> Self {
     Self {
       printing_position,
       ..Default::default()
@@ -126,7 +125,7 @@ impl Printer {
   }
 
   pub fn replace_printing_position(&mut self, printing_position: PrintingPosition) {
-    self.printing_position = Some(printing_position);
+    self.printing_position = printing_position;
     self.printing_position_changed_since_last_print = true;
   }
 
@@ -137,11 +136,7 @@ impl Printer {
     &mut self,
     new_x_printing_position: XPrintingPosition,
   ) -> Result<(), PrintingError> {
-    let Some(printing_position) = &mut self.printing_position else {
-      return Err(PrintingError::MissingPrintingPosition);
-    };
-
-    printing_position.x_printing_position = new_x_printing_position;
+    self.printing_position.x_printing_position = new_x_printing_position;
     self.printing_position_changed_since_last_print = true;
 
     Ok(())
@@ -154,18 +149,15 @@ impl Printer {
     &mut self,
     new_y_printing_position: YPrintingPosition,
   ) -> Result<(), PrintingError> {
-    let Some(printing_position) = &mut self.printing_position else {
-      return Err(PrintingError::MissingPrintingPosition);
-    };
-
-    printing_position.y_printing_position = new_y_printing_position;
+    self.printing_position.y_printing_position = new_y_printing_position;
     self.printing_position_changed_since_last_print = true;
 
     Ok(())
   }
 
-  pub fn get_current_printing_position(&self) -> Option<&PrintingPosition> {
-    self.printing_position.as_ref()
+  /// Returns a reference to the currently stored printing position.
+  pub fn get_current_printing_position(&self) -> &PrintingPosition {
+    &self.printing_position
   }
 
   /// Creates a grid of the given size with the given character.
@@ -281,16 +273,14 @@ impl Printer {
   ///
   /// - When no origin has been defined.
   pub(crate) fn get_origin_position(&self) -> Result<(usize, usize), PrintingError> {
-    self
-      .origin_position
-      .ok_or(PrintingError::CursorPositionNotDefined)
+    self.origin_position.ok_or(PrintingError::OriginNotDefined)
   }
 
   pub(crate) fn valid_rectangle_check(
     rectangle_shape: &str,
   ) -> Result<(usize, usize), PrintingError> {
     if rectangle_shape.is_empty() {
-      return Ok((0, 0));
+      return Err(PrintingError::NonRectangularGrid);
     }
 
     let rows: Vec<&str> = rectangle_shape.split('\n').collect();
@@ -325,7 +315,7 @@ impl Printer {
   /// Resets all data for the printer except for the current position.
   pub fn reset_and_retain_printing_position(&mut self) {
     *self = Printer {
-      printing_position: self.printing_position.take(),
+      printing_position: std::mem::take(&mut self.printing_position),
       ..Default::default()
     };
   }
@@ -333,7 +323,7 @@ impl Printer {
   /// Resets all data for the printer and assigns the given printing position.
   pub fn reset_with_position(&mut self, printing_position: PrintingPosition) {
     *self = Printer {
-      printing_position: Some(printing_position),
+      printing_position,
       ..Default::default()
     }
   }
@@ -343,8 +333,6 @@ impl Printer {
       if current_origin.0 != new_origin.0 || current_origin.1 != new_origin.1 {
         self.printing_position_changed_since_last_print = true;
       }
-      // } else {
-      //   self.printing_position_changed_since_last_print = true;
     }
 
     self.origin_position = Some(new_origin);
@@ -355,8 +343,6 @@ impl Printer {
       if current_dimensions.0 != new_dimensions.0 || current_dimensions.1 != new_dimensions.1 {
         self.printing_position_changed_since_last_print = true;
       }
-      // } else {
-      //   self.printing_position_changed_since_last_print = true;
     }
 
     self.grid_width = Some(new_dimensions.0);

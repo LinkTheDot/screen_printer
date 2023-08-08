@@ -1,16 +1,18 @@
 use crate::printer::*;
 use std::{io, io::Write};
-use termion::cursor::DetectCursorPos;
-use termion::input::MouseTerminal;
-use termion::raw::IntoRawMode;
 
 mod tests;
 
 pub trait DynamicPrinter {
-  /// The dynamic_print method is the main part of the screen_printer crate.
   /// This method will print any grid to the terminal based on the [`PrintingPosition`](crate::printing_position::PrintingPosition).
   ///
   /// When printing a new grid to the screen, it'll compare every character from the previous one, and only print the characters that have changed.
+  ///
+  /// # Errors
+  ///
+  /// - The given grid wasn't rectangular in shape.
+  /// - The string for the grid is empty.
+  /// - The given grid is larger than the current dimensions of the terminal.
   ///
   /// # Example
   /// ```rust,no_run
@@ -22,7 +24,7 @@ pub trait DynamicPrinter {
   /// fn main() {
   ///   print!("\u{1b}[2J"); // Clear all text on the terminal
   ///   // The default printing position is the bottom left of the terminal
-  ///   let mut printer = Printer::new_with_printing_position(PrintingPosition::default());
+  ///   let mut printer = Printer::new();
   ///
   ///   // Create the first grid to be printed.
   ///   let grid_1 = "abc\n123\nxyz".to_string();
@@ -57,16 +59,6 @@ pub trait DynamicPrinter {
   /// ```
   ///
   /// For more information about using the printer, refer to the example on [`github`](https://github.com/LinkTheDot/screen_printer/blob/master/examples/dynamic_printer.rs)
-  ///
-  /// # Errors
-  ///
-  /// - The given grid wasn't rectangular in shape.
-  /// - The given grid is larger than the current dimensions of the terminal.
-  ///
-  /// ### When no printing options are defined
-  ///
-  /// - Failed to get stdout in raw mode.
-  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
   fn dynamic_print(&mut self, new_grid: String) -> Result<(), PrintingError>;
 
   /// Replaces every character in the grid with whitespace.
@@ -96,7 +88,7 @@ impl DynamicPrinter for Printer {
     }
 
     if !self.previous_grid.is_empty() && !self.printing_position_changed_since_last_print {
-      let new_origin = self.get_new_origin(new_grid_dimensions, terminal_dimensions)?;
+      let new_origin = self.get_new_origin(new_grid_dimensions, terminal_dimensions);
       self.update_origin(new_origin);
 
       let printable_difference = self.get_printable_difference(&new_grid)?;
@@ -109,7 +101,7 @@ impl DynamicPrinter for Printer {
         terminal_dimensions,
       )?;
     } else {
-      let new_origin = self.get_new_origin(new_grid_dimensions, terminal_dimensions)?;
+      let new_origin = self.get_new_origin(new_grid_dimensions, terminal_dimensions);
       self.update_origin(new_origin);
 
       print_grid_freestanding(&new_grid, new_origin)?;
@@ -125,12 +117,10 @@ impl DynamicPrinter for Printer {
 
   fn clear_grid(&mut self) -> Result<(), PrintingError> {
     let (grid_width, grid_height) = self.get_grid_dimensions()?;
-    let empty_grid = Self::create_grid_from_single_character(' ', grid_width, grid_height);
-    let printer_origin = self.get_origin_position()?;
 
-    print_grid_freestanding(&empty_grid, printer_origin)?;
+    Self::clear_space_on_terminal((grid_width, grid_height), self.get_origin_position()?)?;
 
-    self.previous_grid = empty_grid;
+    self.previous_grid = Self::create_grid_from_single_character(' ', grid_width, grid_height);
 
     Ok(())
   }
@@ -157,43 +147,11 @@ trait DynamicPrinterMethods {
   /// The dimensions of the new grid,
   /// The dimensions of the terminal and;
   /// The current printing settings, or where the terminal cursor is if there are none.
-  ///
-  /// # Errors
-  /// - Failed to get stdout in raw mode.
-  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
   fn get_new_origin(
     &mut self,
     new_grid_dimensions: (usize, usize),
     terminal_dimensions: (usize, usize),
-  ) -> Result<(usize, usize), PrintingError>;
-
-  /// Returns the (x, y) of the printer's new origin
-  ///
-  /// # Errors
-  ///
-  /// - Failed to get stdout in raw mode.
-  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
-  fn get_origin_from_cursor(
-    new_grid_dimensions: (usize, usize),
-  ) -> Result<(usize, usize), PrintingError>;
-  /// Returns the (x, y) of the printer's new origin
-  ///
-  /// # Errors
-  ///
-  /// - When no printing position exists.
-  fn get_origin_from_printing_position(
-    &self,
-    new_grid_dimensions: (usize, usize),
-    terminal_dimensions: (usize, usize),
-  ) -> Result<(usize, usize), PrintingError>;
-
-  /// Returns the current position of the cursor
-  ///
-  /// # Errors
-  ///
-  /// - Failed to get stdout in raw mode.
-  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
-  fn get_current_cursor_position() -> Result<(usize, usize), PrintingError>;
+  ) -> (usize, usize);
 
   /// Prints whitespace over the previous grid, then prints the new one wherever it needs to go.
   ///
@@ -205,16 +163,16 @@ trait DynamicPrinterMethods {
   /// - The new grid wasn't rectangular in shape.
   /// - Grid dimensions weren't set.
   /// - Origin wasn't set.
-  ///
-  /// ### When no printing options are defined
-  ///
-  /// - Failed to get stdout in raw mode.
-  /// - Timed out when trying to get a hold on stdin when reading for the cursor's position.
   fn replace_currently_printed_grid(
     &mut self,
     new_grid: &str,
     new_grid_dimensions: Option<(usize, usize)>,
     terminal_dimensions: (usize, usize),
+  ) -> Result<(), PrintingError>;
+
+  fn clear_space_on_terminal(
+    clearing_dimensions: (usize, usize),
+    top_left_position: (usize, usize),
   ) -> Result<(), PrintingError>;
 }
 
@@ -264,7 +222,7 @@ impl DynamicPrinterMethods for Printer {
 
   fn move_to_origin(&self) -> Result<(), PrintingError> {
     let Some((x, y)) = self.origin_position else {
-      return Err(PrintingError::CursorPositionNotDefined);
+      return Err(PrintingError::OriginNotDefined);
     };
 
     print!("\x1B[{};{}H", y, x);
@@ -274,38 +232,10 @@ impl DynamicPrinterMethods for Printer {
 
   fn get_new_origin(
     &mut self,
-    new_grid_dimensions: (usize, usize),
-    terminal_dimensions: (usize, usize),
-  ) -> Result<(usize, usize), PrintingError> {
-    let origin: (usize, usize) = if self.get_current_printing_position().is_none() {
-      Self::get_origin_from_cursor(new_grid_dimensions)?
-    } else {
-      self.get_origin_from_printing_position(new_grid_dimensions, terminal_dimensions)?
-    };
-
-    Ok(origin)
-  }
-
-  fn get_origin_from_cursor(
-    new_grid_dimensions: (usize, usize),
-  ) -> Result<(usize, usize), PrintingError> {
-    let (mut x, mut y) = Self::get_current_cursor_position()?;
-    let (grid_width, grid_height) = new_grid_dimensions;
-
-    x = (x as isize - grid_width as isize).max(1) as usize;
-    y = (y as isize - grid_height as isize).max(1) as usize;
-
-    Ok((x, y))
-  }
-
-  fn get_origin_from_printing_position(
-    &self,
     (grid_width, grid_height): (usize, usize),
     (terminal_width, terminal_height): (usize, usize),
-  ) -> Result<(usize, usize), PrintingError> {
-    let Some(printing_position) = self.get_current_printing_position() else {
-      return Err(PrintingError::MissingPrintingPosition);
-    };
+  ) -> (usize, usize) {
+    let printing_position = self.get_current_printing_position();
 
     let x: usize = match printing_position.x_printing_position {
       XPrintingPosition::Left => 1,
@@ -324,19 +254,7 @@ impl DynamicPrinterMethods for Printer {
       YPrintingPosition::Bottom => (terminal_height - grid_height) + 1,
     };
 
-    Ok((x, y))
-  }
-
-  fn get_current_cursor_position() -> Result<(usize, usize), PrintingError> {
-    let cursor_position = match io::stdout().into_raw_mode() {
-      Ok(raw_stdout) => MouseTerminal::from(raw_stdout).cursor_pos(),
-      Err(error) => return Err(PrintingError::CursorError(error.to_string())),
-    };
-
-    match cursor_position {
-      Ok(position) => Ok((position.0 as usize, position.1 as usize)),
-      Err(error) => Err(PrintingError::CursorError(error.to_string())),
-    }
+    (x, y)
   }
 
   fn replace_currently_printed_grid(
@@ -351,9 +269,10 @@ impl DynamicPrinterMethods for Printer {
       Self::valid_rectangle_check(new_grid)?
     };
 
-    self.clear_grid()?;
+    // Can return an error if the PrintingPosition was changed before a first print.
+    let _ = self.clear_grid();
 
-    let new_origin = self.get_new_origin((new_grid_width, new_grid_height), terminal_dimensions)?;
+    let new_origin = self.get_new_origin((new_grid_width, new_grid_height), terminal_dimensions);
 
     self.update_dimensions((new_grid_width, new_grid_height));
     self.update_origin(new_origin);
@@ -361,6 +280,16 @@ impl DynamicPrinterMethods for Printer {
     print_grid_freestanding(new_grid, new_origin)?;
 
     Ok(())
+  }
+
+  fn clear_space_on_terminal(
+    clearing_dimensions: (usize, usize),
+    top_left_position: (usize, usize),
+  ) -> Result<(), PrintingError> {
+    let empty_grid =
+      Self::create_grid_from_single_character(' ', clearing_dimensions.0, clearing_dimensions.1);
+
+    print_grid_freestanding(&empty_grid, top_left_position)
   }
 }
 

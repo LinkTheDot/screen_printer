@@ -3,6 +3,7 @@ use screen_printer::printer::*;
 use std::{thread, time::Duration};
 
 fn main() {
+  let _cursor_hider = termion::cursor::HideCursor::from(std::io::stdout());
   println!("{}", termion::clear::All);
   let mut printer = Printer::new_with_printing_position(PrintingPosition::new(
     XPrintingPosition::Middle,

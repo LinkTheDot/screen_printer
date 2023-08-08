@@ -12,8 +12,7 @@ fn main() {
   print!("{}", termion::clear::All);
   let _cursor_hider = termion::cursor::HideCursor::from(std::io::stdout());
 
-  let _cursor_hider = termion::cursor::HideCursor::from(std::io::stdout());
-  let mut printer = Printer::new_with_printing_position(PrintingPosition::default()); // The default is bottom left.
+  let mut printer = Printer::new(); // Defaults with a printing position of Bottom Left.
   let grid_1 = Printer::create_grid_from_single_character('|', WIDTH, HEIGHT);
   let grid_2 = Printer::create_grid_from_single_character('=', WIDTH, HEIGHT);
 

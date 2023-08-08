@@ -411,9 +411,7 @@ mod get_origin_from_printing_potision_tests {
 
     let expected_x_position = 1;
 
-    let (origin_x, _) = printer
-      .get_origin_from_printing_position(grid_dimensions, (terminal_width, terminal_height))
-      .unwrap();
+    let (origin_x, _) = printer.get_new_origin(grid_dimensions, (terminal_width, terminal_height));
 
     assert_eq!(origin_x, expected_x_position);
   }
@@ -431,9 +429,7 @@ mod get_origin_from_printing_potision_tests {
       - (grid_dimensions.0 as f32 / 2.0).floor())
     .floor() as usize;
 
-    let (origin_x, _) = printer
-      .get_origin_from_printing_position(grid_dimensions, (terminal_width, terminal_height))
-      .unwrap();
+    let (origin_x, _) = printer.get_new_origin(grid_dimensions, (terminal_width, terminal_height));
 
     assert_eq!(origin_x, expected_x_position);
   }
@@ -449,9 +445,7 @@ mod get_origin_from_printing_potision_tests {
 
     let expected_x_position = (terminal_width - grid_dimensions.0) + 1;
 
-    let (origin_x, _) = printer
-      .get_origin_from_printing_position(grid_dimensions, (terminal_width, terminal_height))
-      .unwrap();
+    let (origin_x, _) = printer.get_new_origin(grid_dimensions, (terminal_width, terminal_height));
 
     assert_eq!(origin_x, expected_x_position);
   }
@@ -467,9 +461,7 @@ mod get_origin_from_printing_potision_tests {
 
     let expected_y_position = 1;
 
-    let (_, origin_y) = printer
-      .get_origin_from_printing_position(grid_dimensions, (terminal_width, terminal_height))
-      .unwrap();
+    let (_, origin_y) = printer.get_new_origin(grid_dimensions, (terminal_width, terminal_height));
 
     assert_eq!(origin_y, expected_y_position);
   }
@@ -487,9 +479,7 @@ mod get_origin_from_printing_potision_tests {
       - (grid_dimensions.1 as f32 / 2.0).floor())
     .floor() as usize;
 
-    let (_, origin_y) = printer
-      .get_origin_from_printing_position(grid_dimensions, (terminal_width, terminal_height))
-      .unwrap();
+    let (_, origin_y) = printer.get_new_origin(grid_dimensions, (terminal_width, terminal_height));
 
     assert_eq!(origin_y, expected_y_position);
   }
@@ -505,9 +495,7 @@ mod get_origin_from_printing_potision_tests {
 
     let expected_y_position = (terminal_height - grid_dimensions.1) + 1;
 
-    let (_, origin_y) = printer
-      .get_origin_from_printing_position(grid_dimensions, (terminal_width, terminal_height))
-      .unwrap();
+    let (_, origin_y) = printer.get_new_origin(grid_dimensions, (terminal_width, terminal_height));
 
     assert_eq!(origin_y, expected_y_position);
   }
@@ -531,11 +519,8 @@ fn get_preassigned_printer() -> Printer {
   printer.previous_grid = BASE_GRID.to_string();
   printer.grid_width = Some(grid_width);
   printer.grid_height = Some(grid_height);
-  printer.origin_position = Some(
-    printer
-      .get_new_origin((grid_width, grid_height), terminal_dimensions)
-      .unwrap(),
-  );
+  printer.origin_position =
+    Some(printer.get_new_origin((grid_width, grid_height), terminal_dimensions));
 
   printer
 }

@@ -15,13 +15,6 @@ pub enum PrintingError {
   /// Each column is a character, and each row is a new line.
   NonRectangularGrid,
 
-  /// When no [`printing positions`](crate::printing_position::PrintingPosition) are defined, the printer will attempt to read the
-  /// position of the cursor to print the grid.
-  /// This error is returned when getting the position of the cursor failed.
-  ///
-  /// The error message is contained.
-  CursorError(String),
-
   /// When attempting to get the dimensions of the terminal, an error occurred.
   ///
   /// The error message is contained
@@ -32,8 +25,8 @@ pub enum PrintingError {
 
   /// When attempting to get the dimensions of the grid, there were no stored dimensions for the grid.
   GridDimensionsNotDefined,
-  /// When attempting to get the origin position of the printer, there was no stored position for the grid.
-  CursorPositionNotDefined,
+  /// Origin was not defined when attempting to obtain it.
+  OriginNotDefined,
 
   /// There was no [`PrintingPosition`](crate::printing_position::PrintingPosition) when attempting to get origin from printing position.err
   MissingPrintingPosition,

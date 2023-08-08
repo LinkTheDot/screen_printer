@@ -73,3 +73,12 @@ impl PrintingPosition {
     }
   }
 }
+
+impl From<(XPrintingPosition, YPrintingPosition)> for PrintingPosition {
+  fn from(item: (XPrintingPosition, YPrintingPosition)) -> Self {
+    Self {
+      x_printing_position: item.0,
+      y_printing_position: item.1,
+    }
+  }
+}
