@@ -94,10 +94,10 @@ impl fmt::Display for PrintingError {
 pub struct Printer {
   pub(crate) previous_grid: String,
 
-  pub(crate) origin_position: Option<(usize, usize)>,
+  origin_position: Option<(usize, usize)>,
 
-  pub(crate) grid_height: Option<usize>,
-  pub(crate) grid_width: Option<usize>,
+  grid_height: Option<usize>,
+  grid_width: Option<usize>,
 
   printing_position: PrintingPosition,
   pub(crate) printing_position_changed_since_last_print: bool,
@@ -295,7 +295,12 @@ impl Printer {
     }
   }
 
-  pub(crate) fn get_terminal_dimensions() -> Result<(usize, usize), PrintingError> {
+  /// Returns the current dimensions of the terminal.
+  ///
+  /// # Errors
+  ///
+  /// - Whenever [`termion::terminal_size`](https://docs.rs/termion/2.0.1/termion/fn.terminal_size.html) can fail. They don't document it themselves.
+  pub fn get_terminal_dimensions() -> Result<(usize, usize), PrintingError> {
     match termion::terminal_size() {
       Ok(terminal_dimensions) => Ok((
         terminal_dimensions.0 as usize,

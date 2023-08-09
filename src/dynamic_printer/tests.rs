@@ -499,6 +499,44 @@ mod get_origin_from_printing_potision_tests {
 
     assert_eq!(origin_y, expected_y_position);
   }
+
+  #[test]
+  fn y_custom_position() {
+    let (terminal_width, terminal_height) = Printer::get_terminal_dimensions().unwrap();
+    let mut printer = get_preassigned_printer();
+    let grid_dimensions = GRID_SIZES;
+    let printing_position = (terminal_height / 10).max(1);
+    printer
+      .replace_y_printing_position(YPrintingPosition::Custom(printing_position))
+      .unwrap();
+
+    let expected_y_position = printing_position
+      - ((printing_position + grid_dimensions.1) as isize - terminal_height as isize).max(0)
+        as usize;
+
+    let (_, origin_y) = printer.get_new_origin(grid_dimensions, (terminal_width, terminal_height));
+
+    assert_eq!(origin_y, expected_y_position);
+  }
+
+  #[test]
+  fn x_custom_position() {
+    let (terminal_width, terminal_height) = Printer::get_terminal_dimensions().unwrap();
+    let mut printer = get_preassigned_printer();
+    let grid_dimensions = GRID_SIZES;
+    let printing_position = (terminal_width / 10).max(1);
+    printer
+      .replace_x_printing_position(XPrintingPosition::Custom(printing_position))
+      .unwrap();
+
+    let expected_x_position = printing_position
+      - ((printing_position + grid_dimensions.1) as isize - terminal_width as isize).max(0)
+        as usize;
+
+    let (origin_x, _) = printer.get_new_origin(grid_dimensions, (terminal_width, terminal_height));
+
+    assert_eq!(origin_x, expected_x_position);
+  }
 }
 
 // Base grid will be
@@ -517,10 +555,8 @@ fn get_preassigned_printer() -> Printer {
   );
 
   printer.previous_grid = BASE_GRID.to_string();
-  printer.grid_width = Some(grid_width);
-  printer.grid_height = Some(grid_height);
-  printer.origin_position =
-    Some(printer.get_new_origin((grid_width, grid_height), terminal_dimensions));
+  printer.update_dimensions((grid_width, grid_height));
+  printer.update_origin(printer.get_new_origin((grid_width, grid_height), terminal_dimensions));
 
   printer
 }

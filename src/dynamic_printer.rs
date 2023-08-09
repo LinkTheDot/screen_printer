@@ -148,7 +148,7 @@ trait DynamicPrinterMethods {
   /// The dimensions of the terminal and;
   /// The current printing settings, or where the terminal cursor is if there are none.
   fn get_new_origin(
-    &mut self,
+    &self,
     new_grid_dimensions: (usize, usize),
     terminal_dimensions: (usize, usize),
   ) -> (usize, usize);
@@ -221,9 +221,7 @@ impl DynamicPrinterMethods for Printer {
   }
 
   fn move_to_origin(&self) -> Result<(), PrintingError> {
-    let Some((x, y)) = self.origin_position else {
-      return Err(PrintingError::OriginNotDefined);
-    };
+    let (x, y) = self.get_origin_position()?;
 
     print!("\x1B[{};{}H", y, x);
 
@@ -231,7 +229,7 @@ impl DynamicPrinterMethods for Printer {
   }
 
   fn get_new_origin(
-    &mut self,
+    &self,
     (grid_width, grid_height): (usize, usize),
     (terminal_width, terminal_height): (usize, usize),
   ) -> (usize, usize) {
@@ -239,19 +237,24 @@ impl DynamicPrinterMethods for Printer {
 
     let x: usize = match printing_position.x_printing_position {
       XPrintingPosition::Left => 1,
-      XPrintingPosition::Middle => {
-        ((terminal_width as f32 / 2.0).floor() - (grid_width as f32 / 2.0).floor()).floor() as usize
+      XPrintingPosition::Middle => calculate_grid_center_placement(grid_width, terminal_width),
+      XPrintingPosition::Right => {
+        calculate_grid_positive_border_placement(grid_width, terminal_width)
       }
-
-      XPrintingPosition::Right => (terminal_width - grid_width) + 1,
+      XPrintingPosition::Custom(cursor_x_position) => {
+        calculate_custom_grid_position(grid_width, terminal_width, cursor_x_position)
+      }
     };
 
     let y: usize = match printing_position.y_printing_position {
       YPrintingPosition::Top => 1,
-      YPrintingPosition::Middle => ((terminal_height as f32 / 2.0).floor()
-        - (grid_height as f32 / 2.0).floor())
-      .floor() as usize,
-      YPrintingPosition::Bottom => (terminal_height - grid_height) + 1,
+      YPrintingPosition::Middle => calculate_grid_center_placement(grid_height, terminal_height),
+      YPrintingPosition::Bottom => {
+        calculate_grid_positive_border_placement(grid_height, terminal_height)
+      }
+      YPrintingPosition::Custom(cursor_y_position) => {
+        calculate_custom_grid_position(grid_height, terminal_height, cursor_y_position)
+      }
     };
 
     (x, y)
@@ -316,6 +319,30 @@ fn print_grid_freestanding(
   print!("{}", grid_with_cursor_movements);
 
   Ok(())
+}
+
+/// Determines the position of where to place a grid in the center of the screen based on the length
+/// of the grid and terinal.
+fn calculate_grid_center_placement(grid_length: usize, terminal_length: usize) -> usize {
+  ((terminal_length as f32 / 2.0).floor() - (grid_length as f32 / 2.0).floor()) as usize
+}
+
+/// Determines the position of where to place a grid on the positive border of the screen(bottom and right)
+/// on the length of the grid and terminal.
+fn calculate_grid_positive_border_placement(grid_length: usize, terminal_length: usize) -> usize {
+  ((terminal_length as isize - grid_length as isize).max(0) + 1) as usize
+}
+
+fn calculate_custom_grid_position(
+  grid_length: usize,
+  terminal_length: usize,
+  grid_placement: usize,
+) -> usize {
+  // Accounts for when the placement is set to 0 due to user error.
+  let grid_placement = grid_placement.max(1);
+
+  grid_placement
+    - ((grid_placement + grid_length) as isize - terminal_length as isize).max(0) as usize
 }
 
 trait VecMethods<T> {

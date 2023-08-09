@@ -32,6 +32,7 @@ pub enum XPrintingPosition {
   Left,
   Middle,
   Right,
+  Custom(usize),
 }
 
 /// The list of Y positions to print a grid on the screen to.
@@ -43,6 +44,7 @@ pub enum YPrintingPosition {
   Middle,
   #[default]
   Bottom,
+  Custom(usize),
 }
 
 impl PrintingPosition {
