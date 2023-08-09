@@ -81,8 +81,19 @@ impl DynamicPrinter for Printer {
       return Err(PrintingError::GridLargerThanTerminal);
     }
 
+    // Check if the dimensions of the grid have changed
     if let Ok((old_grid_width, old_grid_height)) = self.get_grid_dimensions() {
       if old_grid_width != new_grid_dimensions.0 || old_grid_height != new_grid_dimensions.1 {
+        self.printing_position_changed_since_last_print = true;
+      }
+    }
+
+    // Check if the dimensions of the terminal have changed
+    if let Ok((old_terminal_width, old_terminal_height)) =
+      self.get_terminal_dimensions_from_previous_print()
+    {
+      if old_terminal_width != terminal_dimensions.0 || old_terminal_height != terminal_dimensions.1
+      {
         self.printing_position_changed_since_last_print = true;
       }
     }
@@ -110,6 +121,7 @@ impl DynamicPrinter for Printer {
     let _ = io::stdout().flush();
     self.previous_grid = new_grid;
     self.update_dimensions(new_grid_dimensions);
+    self.update_terminal_dimensions_from_previous_print(terminal_dimensions);
     self.printing_position_changed_since_last_print = false;
 
     Ok(())

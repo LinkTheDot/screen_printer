@@ -27,6 +27,8 @@ pub enum PrintingError {
   GridDimensionsNotDefined,
   /// Origin was not defined when attempting to obtain it.
   OriginNotDefined,
+  /// There's no stored terminal dimensions from the previous print.
+  TerminalDimensionsNotDefined,
 
   /// There was no [`PrintingPosition`](crate::printing_position::PrintingPosition) when attempting to get origin from printing position.err
   MissingPrintingPosition,
