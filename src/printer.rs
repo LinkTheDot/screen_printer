@@ -1,9 +1,3 @@
-// Create documentation for:
-//  - Printer struct.
-//  - PrintingPosition struct.
-//  - dynamic_print method and;
-//  - probably a few other things I forgot to document.
-
 pub use crate::dynamic_printer::*;
 pub use crate::errors::*;
 pub use crate::printing_position::*;
@@ -71,7 +65,6 @@ impl fmt::Display for PrintingError {
 /// 123
 /// xyz
 /// ```
-///
 /// Into
 ///
 /// ```bash,no_run
@@ -95,9 +88,9 @@ pub struct Printer {
   pub(crate) previous_grid: String,
 
   origin_position: Option<(usize, usize)>,
-
   grid_height: Option<usize>,
   grid_width: Option<usize>,
+  previous_terminal_dimensions: Option<(usize, usize)>,
 
   printing_position: PrintingPosition,
   pub(crate) printing_position_changed_since_last_print: bool,
@@ -260,11 +253,6 @@ impl Printer {
     Ok((width, height))
   }
 
-  // /// Assign the passed in [`PrintingPosition`](PrintingPosition) for the printer.
-  // pub fn assign_printing_position(&mut self, printing_position: PrintingPosition) {
-  //   self.printing_position = Some(printing_position)
-  // }
-
   /// Returns the currently stored origin positions.
   ///
   /// If no position has been defined, an error is returned.
@@ -274,6 +262,14 @@ impl Printer {
   /// - When no origin has been defined.
   pub(crate) fn get_origin_position(&self) -> Result<(usize, usize), PrintingError> {
     self.origin_position.ok_or(PrintingError::OriginNotDefined)
+  }
+
+  pub(crate) fn get_terminal_dimensions_from_previous_print(
+    &self,
+  ) -> Result<(usize, usize), PrintingError> {
+    self
+      .previous_terminal_dimensions
+      .ok_or(PrintingError::TerminalDimensionsNotDefined)
   }
 
   pub(crate) fn valid_rectangle_check(
@@ -352,6 +348,19 @@ impl Printer {
 
     self.grid_width = Some(new_dimensions.0);
     self.grid_height = Some(new_dimensions.1);
+  }
+
+  pub(crate) fn update_terminal_dimensions_from_previous_print(
+    &mut self,
+    new_dimensions: (usize, usize),
+  ) {
+    if let Ok(current_dimensions) = self.get_terminal_dimensions_from_previous_print() {
+      if current_dimensions.0 != new_dimensions.0 || current_dimensions.1 != new_dimensions.1 {
+        self.printing_position_changed_since_last_print = true;
+      }
+    }
+
+    self.previous_terminal_dimensions = Some(new_dimensions);
   }
 }
 
