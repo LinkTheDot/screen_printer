@@ -272,7 +272,13 @@ impl Printer {
       .ok_or(PrintingError::TerminalDimensionsNotDefined)
   }
 
-  pub(crate) fn valid_rectangle_check(
+  /// Returns the dimensions of the passed in string.
+  /// An error is returned if the string is [`non-rectangular`](Printer::is_rectangular)
+  ///
+  /// # Errors
+  ///
+  /// - The passed in string is non-rectangular.
+  pub fn get_rectangular_dimensions(
     rectangle_shape: &str,
   ) -> Result<(usize, usize), PrintingError> {
     if rectangle_shape.is_empty() {
@@ -289,6 +295,17 @@ impl Printer {
     } else {
       Err(PrintingError::NonRectangularGrid)
     }
+  }
+
+  /// Returns true if the passed in string is rectangular in shape.
+  ///
+  /// # Examples
+  ///
+  /// Valid rectangle: `"xxxxx\nxxxxx`
+  ///
+  /// Invalid rectangle: `"xxxxx\nxxx`
+  pub fn is_rectangular(rectangle_shape: &str) -> bool {
+    Self::get_rectangular_dimensions(rectangle_shape).is_ok()
   }
 
   /// Returns the current dimensions of the terminal.
@@ -329,6 +346,42 @@ impl Printer {
     }
   }
 
+  /// Adds whitespace to every row in the grid to match the length of the longest.
+  ///
+  /// This is for turning non-rectangular strings into rectangles for being printed with [`dynamic_print`](crate::dynamic_printer::DynamicPrinter::dynamic_print)
+  ///
+  /// # Examples
+  ///
+  /// ```
+  /// use screen_printer::printer::*;
+  ///
+  /// let mut grid = "xxx\nxx\nx".to_string();
+  ///
+  /// Printer::pad_rows_for_rectangle(&mut grid);
+  ///
+  /// assert!(Printer::is_rectangular(&grid));
+  /// assert_eq!(&grid, "xxx\nxx \nx  ");
+  /// ```
+  pub fn pad_rows_for_rectangle(grid: &mut String) {
+    let Some(largest_row) = grid.split('\n').max_by_key(|row| row.chars().count()) else {
+      return;
+    };
+    let largest_row_size = largest_row.chars().count();
+    let padded_grid: String = grid
+      .lines()
+      .map(|row| {
+        let padding = " ".repeat(largest_row_size - row.chars().count());
+
+        format!("{row}{padding}")
+      })
+      .collect::<Vec<String>>()
+      .join("\n");
+
+    *grid = padded_grid;
+  }
+
+  /// Assigns the passed in new_origin and changes the printing_position_changed_since_last_print field to true
+  /// if the passed in origin is different from the previous one.
   pub(crate) fn update_origin(&mut self, new_origin: (usize, usize)) {
     if let Ok(current_origin) = self.get_origin_position() {
       if current_origin.0 != new_origin.0 || current_origin.1 != new_origin.1 {
@@ -339,6 +392,8 @@ impl Printer {
     self.origin_position = Some(new_origin);
   }
 
+  /// Assigns the passed in new_dimensions and changes the printing_position_changed_since_last_print field to true
+  /// if the passed in dimensions are different from the previous one.
   pub(crate) fn update_dimensions(&mut self, new_dimensions: (usize, usize)) {
     if let Ok(current_dimensions) = self.get_grid_dimensions() {
       if current_dimensions.0 != new_dimensions.0 || current_dimensions.1 != new_dimensions.1 {
@@ -350,17 +405,21 @@ impl Printer {
     self.grid_height = Some(new_dimensions.1);
   }
 
+  /// Assigns the passed in new_terminal_dimensions and changes the printing_position_changed_since_last_print field to true
+  /// if the passed in terminal_dimensions are different from the previous one.
   pub(crate) fn update_terminal_dimensions_from_previous_print(
     &mut self,
-    new_dimensions: (usize, usize),
+    new_terminal_dimensions: (usize, usize),
   ) {
     if let Ok(current_dimensions) = self.get_terminal_dimensions_from_previous_print() {
-      if current_dimensions.0 != new_dimensions.0 || current_dimensions.1 != new_dimensions.1 {
+      if current_dimensions.0 != new_terminal_dimensions.0
+        || current_dimensions.1 != new_terminal_dimensions.1
+      {
         self.printing_position_changed_since_last_print = true;
       }
     }
 
-    self.previous_terminal_dimensions = Some(new_dimensions);
+    self.previous_terminal_dimensions = Some(new_terminal_dimensions);
   }
 }
 
