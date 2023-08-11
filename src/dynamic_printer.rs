@@ -73,7 +73,7 @@ pub trait DynamicPrinter {
 impl DynamicPrinter for Printer {
   fn dynamic_print(&mut self, new_grid: String) -> Result<(), PrintingError> {
     let terminal_dimensions = Printer::get_terminal_dimensions()?;
-    let new_grid_dimensions = Self::valid_rectangle_check(&new_grid)?;
+    let new_grid_dimensions = Self::get_rectangular_dimensions(&new_grid)?;
 
     if new_grid_dimensions.0 > terminal_dimensions.0
       || new_grid_dimensions.1 > terminal_dimensions.1
@@ -281,7 +281,7 @@ impl DynamicPrinterMethods for Printer {
     let (new_grid_width, new_grid_height) = if let Some(new_grid_dimensions) = new_grid_dimensions {
       new_grid_dimensions
     } else {
-      Self::valid_rectangle_check(new_grid)?
+      Self::get_rectangular_dimensions(new_grid)?
     };
 
     // Can return an error if the PrintingPosition was changed before a first print.
@@ -318,7 +318,7 @@ fn print_grid_freestanding(
   grid: &str,
   printing_position: (usize, usize),
 ) -> Result<(), PrintingError> {
-  Printer::valid_rectangle_check(grid)?;
+  Printer::get_rectangular_dimensions(grid)?;
   let mut grid_with_cursor_movements = String::new();
   let cursor_movement = format!("\x1B[1B\x1B[{}G", printing_position.0);
 

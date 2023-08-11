@@ -548,7 +548,7 @@ static GRID_SIZES: (usize, usize) = (5, 3);
 
 fn get_preassigned_printer() -> Printer {
   let terminal_dimensions = Printer::get_terminal_dimensions().unwrap();
-  let (grid_width, grid_height) = Printer::valid_rectangle_check(BASE_GRID).unwrap();
+  let (grid_width, grid_height) = Printer::get_rectangular_dimensions(BASE_GRID).unwrap();
 
   let mut printer = Printer::new_with_printing_position(
     PrintingPosition::with_y_printing_position(YPrintingPosition::Top),
