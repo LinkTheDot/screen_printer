@@ -134,7 +134,7 @@ mod get_printable_difference_logic {
       let different_grid = get_modified_base_grid(vec![1, 8]);
       let origin = printer.get_origin_position().unwrap();
 
-      let expected_different_pixels = vec![
+      let expected_different_pixels = [
         PixelDifference {
           pixels: String::from("l"),
           index: 1,
@@ -207,7 +207,7 @@ mod get_printable_difference_logic {
       let different_grid = get_modified_base_grid(vec![0, 1, 8]);
       let origin = printer.get_origin_position().unwrap();
 
-      let expected_different_pixels = vec![
+      let expected_different_pixels = [
         PixelDifference {
           pixels: String::from("ll"),
           index: 0,
@@ -235,7 +235,7 @@ mod get_printable_difference_logic {
       let different_grid = get_modified_base_grid(vec![1, 7, 8]);
       let origin = printer.get_origin_position().unwrap();
 
-      let expected_different_pixels = vec![
+      let expected_different_pixels = [
         PixelDifference {
           pixels: String::from("l"),
           index: 1,
@@ -263,7 +263,7 @@ mod get_printable_difference_logic {
       let different_grid = get_modified_base_grid(vec![1, 4, 6]);
       let origin = printer.get_origin_position().unwrap();
 
-      let expected_different_pixels = vec![
+      let expected_different_pixels = [
         PixelDifference {
           pixels: String::from("l"),
           index: 1,
@@ -316,7 +316,7 @@ mod get_printable_difference_logic {
       let different_grid = get_modified_base_grid(vec![0, 1, 6, 7]);
       let origin = printer.get_origin_position().unwrap();
 
-      let expected_different_pixels: String = vec![
+      let expected_different_pixels: String = [
         PixelDifference {
           pixels: String::from("ll"),
           index: 0,
@@ -344,7 +344,7 @@ mod get_printable_difference_logic {
       let different_grid = get_modified_base_grid(vec![0, 4, 12, 16]);
       let origin = printer.get_origin_position().unwrap();
 
-      let expected_different_pixels: String = vec![
+      let expected_different_pixels: String = [
         PixelDifference {
           pixels: String::from("l"),
           index: 0,

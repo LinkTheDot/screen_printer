@@ -1,38 +1,38 @@
+use thiserror::Error;
+
 /// These are the possible ways the program can fail.
 ///
 /// Each error will contain 'ErrorData' which holds the
 /// expected and outcome results in the event of the error.
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Error, Debug, Clone)]
 pub enum PrintingError {
-  /// When creating a grid, the defined size of the grid was larger than the given amount of characters.
+  #[error("Failed to create a grid as there were too many characters. Expected {}, got {}", .0.expected_character_count, .0.actual_character_count)]
   TooManyCharacters(LengthErrorData),
-  /// When creating a grid, the defined size of the grid was smaller than the given amount of characters.
+  #[error("Failed to create a grid as there weren't enough characters. Expected {}, got {}", .0.expected_character_count, .0.actual_character_count)]
   TooLittleCharacters(LengthErrorData),
 
-  /// A grid was passed in and wasn't in a 2d shape.
-  ///
-  /// Grids are stored as a 1d string, but treated as a 2d shape.
-  /// Each column is a character, and each row is a new line.
-  NonRectangularGrid,
-
-  /// When attempting to get the dimensions of the terminal, an error occurred.
-  ///
-  /// The error message is contained
+  #[error("Failed to obtain the dimensions of the terminal. Reason: {}", .0)]
   FailedToGetTerminalDimensions(String),
-  /// This error is returned when a grid passed in to [`dynamic_print`](crate::dynamic_printer::DynamicPrinter::dynamic_print) is
-  /// larger than the dimensions of the terminal.
+  #[error("A grid larger than the terminal itself was passed in.")]
   GridLargerThanTerminal,
 
-  /// When attempting to get the dimensions of the grid, there were no stored dimensions for the grid.
+  #[error("A non rectangular grid was passed in.")]
+  NonRectangularGrid,
+  #[error("Failed to obtain the stored dimensions of the grid.")]
   GridDimensionsNotDefined,
-  /// Origin was not defined when attempting to obtain it.
-  OriginNotDefined,
-  /// There's no stored terminal dimensions from the previous print.
+  #[error("Failed to obtain the stored terminal dimensions.")]
   TerminalDimensionsNotDefined,
-
-  /// There was no [`PrintingPosition`](crate::printing_position::PrintingPosition) when attempting to get origin from printing position.err
-  MissingPrintingPosition,
+  #[error("Failed to obtain the stored origin position.")]
+  OriginNotDefined,
 }
+
+impl PartialEq for PrintingError {
+  fn eq(&self, other: &Self) -> bool {
+    std::mem::discriminant(self) == std::mem::discriminant(other)
+  }
+}
+
+impl Eq for PrintingError {}
 
 /// When creating a grid from [`crate::printer::Printer::create_grid_from_full_character_list`](crate::printer::Printer::create_grid_from_full_character_list),
 /// the sizes given and the actual amount of characters didn't match.
@@ -44,7 +44,7 @@ pub struct LengthErrorData {
 
 impl LengthErrorData {
   /// Creates a new LengthErrorData for the expected length and actual length
-  pub fn new(expected_character_count: usize, actual_character_count: usize) -> Self {
+  pub(crate) fn new(expected_character_count: usize, actual_character_count: usize) -> Self {
     Self {
       expected_character_count,
       actual_character_count,
