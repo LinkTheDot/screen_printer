@@ -13,6 +13,7 @@ description = "A crate for displaying rectangular blocks of text to a terminal."
 [dependencies]
 termion = "2.0.1"
 log = "0.4"
+thiserror = "1.0.49"
 
 [dev-dependencies]
 rand = "0.8.5"

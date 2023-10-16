@@ -5,12 +5,6 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::{io, io::Write};
 
-impl fmt::Display for PrintingError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "{self:?}")
-  }
-}
-
 /// # Screen Printer
 ///
 /// Screen Printer is a rust crate that will allow you to build and print arrays of
