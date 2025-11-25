@@ -14,7 +14,7 @@
 /// This would make any following use of the [`dynamic_print`](crate::dynamic_printer::DynamicPrinter::dynamic_print) method print the grid to the center
 /// of the screen.
 ///
-/// For more information about adjusting the PrintingPosition, refer to the examples on [`github`](https://github.com/LinkTheDot/screen_printer/blob/master/examples/printing_positions.rs).
+/// For more information about adjusting the PrintingPosition, refer to the examples on [`github`](https://github.com/LinkTheDot/screen_printer/tree/master/examples) (see `preset_printing_positions.rs` and `custom_printing_position.rs`).
 ///
 /// For more information about printing, refer to documentation on the [`Printer`](crate::printer::Printer) and [`dynamic_print`](crate::dynamic_printer::DynamicPrinter::dynamic_print) method.
 #[derive(Debug, Default, Clone)]

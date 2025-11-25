@@ -47,7 +47,7 @@ use std::{io, io::Write};
 ///   // Create the second grid to be printed.
 ///   let grid_2 = "abc\n789\nxyz".to_string();
 ///   // Print the second grid.
-///   // This will only end up printing the difference between the two grids/
+///   // This will only end up printing the difference between the two grids.
 ///   printer.dynamic_print(grid_2).unwrap();
 /// }
 /// ```
@@ -75,7 +75,7 @@ use std::{io, io::Write};
 /// These are split by the X and Y axes:
 ///
 /// - Left/Top,
-/// - Middle, and;
+/// - Middle, and
 /// - Right/Bottom.
 #[derive(Default, Debug)]
 pub struct Printer {
@@ -102,8 +102,8 @@ impl Printer {
 
   /// Creates a new printer for the [`dynamic_print()`](Printer::dynamic_print) method with the given printing position.
   ///
-  /// PrintingPositons tell the printer where to print any grids passed into it.
-  /// Refer to [`PrintingPosition`](crate::printing_position::PrintingPosition) for more information;
+  /// PrintingPositions tell the printer where to print any grids passed into it.
+  /// Refer to [`PrintingPosition`](crate::printing_position::PrintingPosition) for more information.
   pub fn new_with_printing_position(printing_position: PrintingPosition) -> Self {
     Self {
       printing_position,
@@ -111,35 +111,34 @@ impl Printer {
     }
   }
 
+  /// Replaces the current printing position with a new one.
+  ///
+  /// This will cause the next [`dynamic_print()`](Printer::dynamic_print) call to reprint the entire grid at the new position.
   pub fn replace_printing_position(&mut self, printing_position: PrintingPosition) {
     self.printing_position = printing_position;
     self.printing_position_changed_since_last_print = true;
   }
 
-  /// # Errors
+  /// Replaces the current X printing position.
   ///
-  /// - There is no defined printing position
+  /// This will cause the next [`dynamic_print()`](Printer::dynamic_print) call to reprint the entire grid at the new position.
   pub fn replace_x_printing_position(
     &mut self,
     new_x_printing_position: XPrintingPosition,
-  ) -> Result<(), PrintingError> {
+  ) {
     self.printing_position.x_printing_position = new_x_printing_position;
     self.printing_position_changed_since_last_print = true;
-
-    Ok(())
   }
 
-  /// # Errors
+  /// Replaces the current Y printing position.
   ///
-  /// - There is no defined printing position
+  /// This will cause the next [`dynamic_print()`](Printer::dynamic_print) call to reprint the entire grid at the new position.
   pub fn replace_y_printing_position(
     &mut self,
     new_y_printing_position: YPrintingPosition,
-  ) -> Result<(), PrintingError> {
+  ) {
     self.printing_position.y_printing_position = new_y_printing_position;
     self.printing_position_changed_since_last_print = true;
-
-    Ok(())
   }
 
   /// Returns a reference to the currently stored printing position.
