@@ -37,7 +37,7 @@ pub trait DynamicPrinter {
   ///   // Create the second grid to be printed.
   ///   let grid_2 = "abc\n789\nxyz".to_string();
   ///   // Print the second grid.
-  ///   // This will only end up printing the difference between the two grids/
+  ///   // This will only end up printing the difference between the two grids.
   ///   printer.dynamic_print(grid_2).unwrap();
   /// }
   /// ```

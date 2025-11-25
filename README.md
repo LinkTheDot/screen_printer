@@ -1,21 +1,37 @@
 # Screen Printer
 
+A Rust crate for displaying rectangular blocks of text to a terminal with dynamic updates and flexible positioning.
+
+## Overview
+
 Screen Printer is a Rust crate that will allow you to build and print arrays of
 data into a grid format.
 
 The purpose of this crate is to make it easier to print rectangular blocks of text to the terminal.
-Including features like:
 
-- `DynamicPrint`, which only prints any characters that changed from any previously printed grid\*.
-- `PrintingPosition`, which allows you to print your string to different places on the terminal, such as the center.
+## Features
+
+- **Dynamic Printing**: Only prints characters that changed from any previously printed grid\*, making updates efficient.
+- **Flexible Positioning**: Print grids to any of 9 preset positions on the terminal (combinations of Left/Middle/Right and Top/Middle/Bottom) or custom positions.
+- **Grid Operations**: Create grids from single characters or arrays of data.
+- **Terminal Awareness**: Automatically handles terminal dimensions and prevents overflow.
 
 \* If the grid changes in size or position it is reprinted in its entirety.
+
+## Installation
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+screen_printer = "0.2.7"
+```
 
 ## Examples
 
 #### Using the dynamic print method to print a grid
 
-The core part of this crate is the [`dynamic_print`](crate::dynamic_printer::DynamicPrinter::dynamic_print) method for the [`Printer`](crate::printer::Printer).
+The core part of this crate is the `dynamic_print` method for the `Printer`.
 This will take a rectangular grid of characters and print only the parts of the grid that have changed since the last print.
 
 ```rust,no_run
@@ -40,7 +56,7 @@ fn main() {
   // Create the second grid to be printed.
   let grid_2 = "abc\n789\nxyz".to_string();
   // Print the second grid.
-  // This will only end up printing the difference between the two grids/
+  // This will only end up printing the difference between the two grids.
   printer.dynamic_print(grid_2).unwrap();
 }
 ```
@@ -63,7 +79,7 @@ xyz
 
 #### Printing Position
 
-Another feature shown in the above example, the [`PrintingPosition`](crate::printer::PrintingPosition).
+Another feature shown in the above example is the `PrintingPosition`.
 
 This will print the grid in any of the 9 defined positions on the terminal.
 These are split by the X and Y axes:
@@ -83,3 +99,43 @@ Each `x` on either side of the `\n` is like a column and the `\n` separates each
 
 For a grid to "not be rectangular" would mean that a row has a differing amount of characters from every other,
 like so: `"xx\nxxx"`
+
+## More Examples
+
+This crate includes several examples demonstrating different features:
+
+- **`dynamic_printer.rs`**: Shows how to use dynamic printing with changing grid sizes
+- **`preset_printing_positions.rs`**: Demonstrates the 9 preset printing positions
+- **`custom_printing_position.rs`**: Shows how to use custom X and Y positions
+- **`creating_grids.rs`**: Examples of creating grids from characters
+- **`change_grid_dimensions.rs`**: How to handle changing grid dimensions
+
+Run an example with:
+```bash
+cargo run --example dynamic_printer
+```
+
+## API Documentation
+
+The main types you'll work with are:
+
+- **`Printer`**: The main struct for managing grid printing
+  - `new()`: Creates a printer with default positioning (Bottom-Left)
+  - `new_with_printing_position()`: Creates a printer with custom positioning
+  - `dynamic_print()`: Prints a grid, only updating changed characters
+  - `create_grid_from_single_character()`: Helper to create uniform grids
+  - `create_grid_from_full_character_list()`: Creates grids from character arrays
+
+- **`PrintingPosition`**: Controls where grids are printed on the terminal
+  - Combines `XPrintingPosition` (Left/Middle/Right/Custom) with `YPrintingPosition` (Top/Middle/Bottom/Custom)
+
+- **`PrintingError`**: Error type for printing operations
+  - Includes detailed error messages for common issues like non-rectangular grids or oversized grids
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License.

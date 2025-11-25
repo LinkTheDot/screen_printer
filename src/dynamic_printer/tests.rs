@@ -406,8 +406,7 @@ mod get_origin_from_printing_potision_tests {
     let mut printer = get_preassigned_printer();
     let grid_dimensions = GRID_SIZES;
     printer
-      .replace_x_printing_position(XPrintingPosition::Left)
-      .unwrap();
+      .replace_x_printing_position(XPrintingPosition::Left);
 
     let expected_x_position = 1;
 
@@ -422,8 +421,7 @@ mod get_origin_from_printing_potision_tests {
     let mut printer = get_preassigned_printer();
     let grid_dimensions = GRID_SIZES;
     printer
-      .replace_x_printing_position(XPrintingPosition::Middle)
-      .unwrap();
+      .replace_x_printing_position(XPrintingPosition::Middle);
 
     let expected_x_position = ((terminal_width as f32 / 2.0).floor()
       - (grid_dimensions.0 as f32 / 2.0).floor())
@@ -440,8 +438,7 @@ mod get_origin_from_printing_potision_tests {
     let mut printer = get_preassigned_printer();
     let grid_dimensions = GRID_SIZES;
     printer
-      .replace_x_printing_position(XPrintingPosition::Right)
-      .unwrap();
+      .replace_x_printing_position(XPrintingPosition::Right);
 
     let expected_x_position = (terminal_width - grid_dimensions.0) + 1;
 
@@ -456,8 +453,7 @@ mod get_origin_from_printing_potision_tests {
     let mut printer = get_preassigned_printer();
     let grid_dimensions = GRID_SIZES;
     printer
-      .replace_y_printing_position(YPrintingPosition::Top)
-      .unwrap();
+      .replace_y_printing_position(YPrintingPosition::Top);
 
     let expected_y_position = 1;
 
@@ -472,8 +468,7 @@ mod get_origin_from_printing_potision_tests {
     let mut printer = get_preassigned_printer();
     let grid_dimensions = GRID_SIZES;
     printer
-      .replace_y_printing_position(YPrintingPosition::Middle)
-      .unwrap();
+      .replace_y_printing_position(YPrintingPosition::Middle);
 
     let expected_y_position = ((terminal_height as f32 / 2.0).floor()
       - (grid_dimensions.1 as f32 / 2.0).floor())
@@ -490,8 +485,7 @@ mod get_origin_from_printing_potision_tests {
     let mut printer = get_preassigned_printer();
     let grid_dimensions = GRID_SIZES;
     printer
-      .replace_y_printing_position(YPrintingPosition::Bottom)
-      .unwrap();
+      .replace_y_printing_position(YPrintingPosition::Bottom);
 
     let expected_y_position = (terminal_height - grid_dimensions.1) + 1;
 
@@ -507,8 +501,7 @@ mod get_origin_from_printing_potision_tests {
     let grid_dimensions = GRID_SIZES;
     let printing_position = (terminal_height / 10).max(1);
     printer
-      .replace_y_printing_position(YPrintingPosition::Custom(printing_position))
-      .unwrap();
+      .replace_y_printing_position(YPrintingPosition::Custom(printing_position));
 
     let expected_y_position = printing_position
       - ((printing_position + grid_dimensions.1) as isize - terminal_height as isize).max(0)
@@ -526,8 +519,7 @@ mod get_origin_from_printing_potision_tests {
     let grid_dimensions = GRID_SIZES;
     let printing_position = (terminal_width / 10).max(1);
     printer
-      .replace_x_printing_position(XPrintingPosition::Custom(printing_position))
-      .unwrap();
+      .replace_x_printing_position(XPrintingPosition::Custom(printing_position));
 
     let expected_x_position = printing_position
       - ((printing_position + grid_dimensions.1) as isize - terminal_width as isize).max(0)
@@ -537,6 +529,17 @@ mod get_origin_from_printing_potision_tests {
 
     assert_eq!(origin_x, expected_x_position);
   }
+}
+
+#[test]
+fn anyhow_compatibility() {
+  fn return_anyhow_error() -> anyhow::Result<()> {
+    Err(PrintingError::OriginNotDefined)?;
+
+    Ok(())
+  }
+
+  let _ = return_anyhow_error();
 }
 
 // Base grid will be

@@ -20,11 +20,11 @@ fn main() {
   print_grids_left_to_right(&mut printer, &grid_1, &grid_2);
 
   // Change Y to middle of the screen
-  let _ = printer.replace_y_printing_position(YPrintingPosition::Middle);
+  printer.replace_y_printing_position(YPrintingPosition::Middle);
   print_grids_left_to_right(&mut printer, &grid_1, &grid_2);
 
   // Change Y to top of the screen
-  let _ = printer.replace_y_printing_position(YPrintingPosition::Top);
+  printer.replace_y_printing_position(YPrintingPosition::Top);
   print_grids_left_to_right(&mut printer, &grid_1, &grid_2);
 
   print!("{}", termion::clear::All);
@@ -33,15 +33,15 @@ fn main() {
 /// Prints the grids Left, Middle, then Right on the screen
 fn print_grids_left_to_right(printer: &mut Printer, grid_1: &str, grid_2: &str) {
   // Left
-  let _ = printer.replace_x_printing_position(XPrintingPosition::Left);
+  printer.replace_x_printing_position(XPrintingPosition::Left);
   print_grids(printer, grid_1, grid_2);
 
   // Middle
-  let _ = printer.replace_x_printing_position(XPrintingPosition::Middle);
+  printer.replace_x_printing_position(XPrintingPosition::Middle);
   print_grids(printer, grid_1, grid_2);
 
   // Right
-  let _ = printer.replace_x_printing_position(XPrintingPosition::Right);
+  printer.replace_x_printing_position(XPrintingPosition::Right);
   print_grids(printer, grid_1, grid_2);
 }
 
